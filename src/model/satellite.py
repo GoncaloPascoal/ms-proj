@@ -21,7 +21,15 @@ class OrbitalPlane:
         self.angular_speed = self.orbital_speed / semimajor_axis
 
 class Satellite:
+    __id = 0
+
+    def __next_id() -> int:
+        ret = Satellite.__id
+        Satellite.__id += 1
+        return ret
+
     def __init__(self, orbital_plane: OrbitalPlane, arg_periapsis: float = 0):
+        self.id = Satellite.__next_id()
         self.orbital_plane = orbital_plane
         self.arg_periapsis = arg_periapsis
 
@@ -32,3 +40,6 @@ class Satellite:
         position: Vector3D = vector.obj(x=r, y=0, z=0)
         return position.rotateY(self.arg_periapsis + true_anomaly).rotateX(self.orbital_plane.inclination)
 
+    def calc_velocity(self, t: float) -> Vector3D:
+        direction = self.calc_position(t).rotateY(pi / 2).unit()
+        return self.orbital_plane.orbital_speed * direction

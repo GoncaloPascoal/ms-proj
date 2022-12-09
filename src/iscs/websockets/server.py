@@ -59,8 +59,11 @@ def update_message(simulation: Simulation) -> str:
     return json.dumps(msg)
 
 async def echo(websocket):
+    messages_per_second = 60
+
+    await websocket.send(init_message(s))
     for _ in itertools.count():
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(1 / messages_per_second)
         s.step()
         await websocket.send(update_message(s))
 

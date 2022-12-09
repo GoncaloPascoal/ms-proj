@@ -9,6 +9,7 @@ EARTH_RADIUS: float = 6.371e6   # m
 class OrbitalPlane:
     __id = 0
 
+    @staticmethod
     def __next_id() -> int:
         ret = OrbitalPlane.__id
         OrbitalPlane.__id += 1
@@ -28,6 +29,10 @@ class OrbitalPlane:
 
         self.orbital_speed = sqrt(GM / semimajor_axis)
         self.angular_speed = self.orbital_speed / semimajor_axis
+
+    @property
+    def orbital_period(self) -> float:
+        return 2 * pi * sqrt(pow(self.semimajor_axis, 3) / GM)
 
 class Satellite:
     __id = 0
@@ -50,7 +55,9 @@ class Satellite:
         true_anomaly = (t * self.orbital_plane.angular_speed) % (2 * pi)
 
         position: Vector3D = vector.obj(x=r, y=0, z=0)
-        return position.rotateY(self.arg_periapsis + true_anomaly).rotateX(self.orbital_plane.inclination)
+        return (position.rotateY(self.arg_periapsis + true_anomaly)
+                        .rotateX(self.orbital_plane.inclination)
+                        .rotateY(self.orbital_plane.longitude))
 
     def calc_velocity(self, t: float) -> Vector3D:
         direction = self.calc_position(t).rotateY(pi / 2).unit()

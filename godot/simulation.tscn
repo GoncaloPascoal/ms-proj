@@ -1,18 +1,17 @@
 [gd_scene load_steps=5 format=2]
 
-[ext_resource path="res://test.gd" type="Script" id=1]
+[ext_resource path="res://simulation.gd" type="Script" id=1]
 [ext_resource path="res://mat.tres" type="Material" id=2]
+[ext_resource path="res://satellite.tscn" type="PackedScene" id=3]
 
 [sub_resource type="SphereMesh" id=1]
 material = ExtResource( 2 )
 radius = 7.0
 height = 14.0
 
-[sub_resource type="CubeMesh" id=2]
-size = Vector3( 1, 1, 1 )
-
 [node name="Root" type="Spatial"]
 script = ExtResource( 1 )
+satellite_scene = ExtResource( 3 )
 
 [node name="Earth" type="MeshInstance" parent="."]
 mesh = SubResource( 1 )
@@ -21,16 +20,4 @@ mesh = SubResource( 1 )
 transform = Transform( 1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 10, 20 )
 fov = 90.0
 
-[node name="Satellite" type="MeshInstance" parent="."]
-mesh = SubResource( 2 )
-
-[node name="Label" type="Label" parent="."]
-margin_top = 400.0
-margin_right = 200.0
-margin_bottom = 500.0
-text = "Test"
-
-[node name="RayCast" type="RayCast" parent="."]
-enabled = true
-debug_shape_custom_color = Color( 0.0117647, 0.266667, 0.87451, 1 )
-debug_shape_thickness = 5
+[node name="SatellitesRoot" type="Spatial" parent="."]

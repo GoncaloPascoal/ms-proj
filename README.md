@@ -17,3 +17,5 @@ pip install -r requirements.txt
 ```
 python3 -m iscs.websockets.server
 ```
+
+- Ensure that Godot 3.5.1 is installed.

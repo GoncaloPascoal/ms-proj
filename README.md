@@ -11,3 +11,9 @@ Project for the Modelling and Simulation (MS) curricular unit.
 ```
 pip install -r requirements.txt
 ```
+
+- Start the server:
+
+```
+python3 -m iscs.websockets.server
+```

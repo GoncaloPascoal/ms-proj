@@ -7,10 +7,19 @@ GM: float = 3.986004418e14      # m^3 s^-2
 EARTH_RADIUS: float = 6.371e6   # m
 
 class OrbitalPlane:
+    __id = 0
+
+    def __next_id() -> int:
+        ret = OrbitalPlane.__id
+        OrbitalPlane.__id += 1
+        return ret
+
     def __init__(self, eccentricity: float = 0, semimajor_axis: float = 0,
             inclination: float = 0, longitude: float = 0):
         if eccentricity != 0:
             raise NotImplementedError
+        
+        self.id = OrbitalPlane.__next_id()
 
         self.eccentricity = eccentricity
         self.semimajor_axis = semimajor_axis
@@ -30,8 +39,11 @@ class Satellite:
 
     def __init__(self, orbital_plane: OrbitalPlane, arg_periapsis: float = 0):
         self.id = Satellite.__next_id()
+        
         self.orbital_plane = orbital_plane
         self.arg_periapsis = arg_periapsis
+
+        self.connections = set()
 
     def calc_position(self, t: float) -> Vector3D:
         r = self.orbital_plane.semimajor_axis
@@ -43,3 +55,9 @@ class Satellite:
     def calc_velocity(self, t: float) -> Vector3D:
         direction = self.calc_position(t).rotateY(pi / 2).unit()
         return self.orbital_plane.orbital_speed * direction
+
+    def connect(self, other_id: int):
+        self.connections.add(other_id)
+
+    def disconnect(self, other_id: int):
+        self.connections.remove(other_id)

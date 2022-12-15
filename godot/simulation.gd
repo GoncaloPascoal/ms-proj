@@ -63,5 +63,9 @@ func _update_simulation(json):
 		satellite.global_translation = position
 		satellite.velocity = velocity
 
-func _process(_delta: float):
+func _physics_process(_delta: float):
 	_client.poll()
+
+func _input(event: InputEvent):
+	if event is InputEventMouseMotion:
+		pass

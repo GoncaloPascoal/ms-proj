@@ -1,2 +1,2 @@
 vector
-websockets==10.4
+tqdm

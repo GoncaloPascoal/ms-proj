@@ -3,7 +3,7 @@ extends Spatial
 const EARTH_RADIUS := 6.371e6
 const SCALE := 2e-6
 
-const FPS = 10.0
+const FPS = 20.0
 
 export(PackedScene) var satellite_scene
 

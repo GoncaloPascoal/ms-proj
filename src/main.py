@@ -1,5 +1,6 @@
 import json
 
+from tqdm import tqdm
 from vector import Vector3D
 from typing import Tuple
 
@@ -54,18 +55,15 @@ def update_message(simulation: Simulation) -> dict:
 
     return msg
 
-def main(s: Simulation):
+def main(s: Simulation, n_steps: int = 1000):
     sim_data = []
     sim_data.append(init_message(s))
     
-    try:
-        while True:
-            s.step()
-            sim_data.append(update_message(s))
-    except:
-        with open("data/test.sim", "w") as f:
-            json.dump(sim_data, f)
-
+    for _ in tqdm(range(n_steps)):
+        s.step()
+        sim_data.append(update_message(s))
+    with open("data/test.sim", "w") as f:
+        json.dump(sim_data, f)
 
 if __name__ == "__main__":
     s = Simulation(inclination=0.6, num_orbital_planes=10, satellites_per_plane=20, semimajor_axis=6_921_000, time_step=10)

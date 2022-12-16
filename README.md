@@ -16,5 +16,6 @@ pip install -r requirements.txt
 - Start the server:
 
 ```
+cd src
 python3 -m iscs.websockets.server
 ```

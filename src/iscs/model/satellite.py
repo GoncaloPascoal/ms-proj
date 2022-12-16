@@ -68,3 +68,17 @@ class Satellite:
 
     def disconnect(self, other_id: int):
         self.connections.remove(other_id)
+
+    def distance_to(self, other: 'Satellite', t: float):
+        self_pos = self.calc_position(t)
+        other_pos = other.calc_position(t)
+        return (self_pos - other_pos).mag
+
+if __name__ == "__main__":
+    semimajor_axis = 6_921_000
+    inclination = 0.6
+    
+    s1 = Satellite(OrbitalPlane(0, semimajor_axis, inclination, 0), 0)
+    s2 = Satellite(OrbitalPlane(0, semimajor_axis, inclination, 1), 0)
+    
+    print(s1.calc_position(0), s2.calc_position(0), s1.distance_to(s2, 0))

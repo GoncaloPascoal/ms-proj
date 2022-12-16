@@ -3,13 +3,16 @@ extends Spatial
 const EARTH_RADIUS := 6.371e6
 const SCALE := 2e-6
 
-export(String) var websocket_url = "ws://localhost:8765"
+const FPS = 10.0
+
 export(PackedScene) var satellite_scene
 
 onready var earth: MeshInstance = $Earth
 onready var satellites_root: Spatial = $SatellitesRoot
 
-var _client = WebSocketClient.new()
+var time_since_start = 0
+var timestamp_index = 1
+var sim_data = {}
 
 func _ready():
 	var mesh = SphereMesh.new()
@@ -19,28 +22,16 @@ func _ready():
 
 	earth.mesh = mesh
 
-	_client.connect("connection_established", self, "_connected")
-	_client.connect("data_received", self, "_on_data")
-
-	var err = _client.connect_to_url(websocket_url)
-
-	if err != OK:
-		print("Unable to connect")
-		set_process(false)
-
-func _connected(_proto: String = ""):
-	print("Connected!")
+	var file = File.new()
+	if not file.file_exists("../src/test.sim"):
+		print("File not found")
+		return
+	file.open("../src/test.sim", File.READ)
+	sim_data = parse_json(file.get_as_text())
+	_init_simulation(sim_data[0])
 
 func list_to_vector3(l) -> Vector3:
 	return Vector3(l[0], l[1], l[2])
-
-func _on_data():
-	var json = JSON.parse(_client.get_peer(1).get_packet().get_string_from_utf8()).result
-	var msg_type = json["msg_type"]
-
-	match msg_type:
-		"init": _init_simulation(json)
-		"update": _update_simulation(json)
 
 func _init_simulation(json):
 	var satellites: Dictionary = json["satellites"]
@@ -64,7 +55,11 @@ func _update_simulation(json):
 		satellite.velocity = velocity
 
 func _physics_process(_delta: float):
-	_client.poll()
+	# ativar o update_simulation conforme necessário
+	time_since_start += _delta
+	if timestamp_index < len(sim_data) and timestamp_index / FPS < time_since_start:
+		_update_simulation(sim_data[timestamp_index])
+		timestamp_index += 1
 
 func _input(event: InputEvent):
 	if event is InputEventMouseMotion:

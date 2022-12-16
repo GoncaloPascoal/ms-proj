@@ -1,7 +1,3 @@
-
-import asyncio
-import websockets
-import itertools
 import json
 
 from vector import Vector3D
@@ -9,7 +5,7 @@ from typing import Tuple
 
 from ..model.simulation import Simulation
 
-def init_message(simulation: Simulation) -> str:
+def init_message(simulation: Simulation) -> dict:
     semimajor_axis = simulation.orbital_planes[0].semimajor_axis if simulation.orbital_planes else 0
     inclination    = simulation.orbital_planes[0].inclination    if simulation.orbital_planes else 0
 
@@ -32,12 +28,12 @@ def init_message(simulation: Simulation) -> str:
         }
     }
 
-    return json.dumps(msg)
+    return msg
 
 def to_tuple(v: Vector3D) -> Tuple[float, float, float]:
     return v.x, v.y, v.z
 
-def update_message(simulation: Simulation) -> str:
+def update_message(simulation: Simulation) -> dict:
     msg = {
         "msg_type": "update",
         "t": simulation.t,
@@ -56,20 +52,21 @@ def update_message(simulation: Simulation) -> str:
         )),
     }
 
-    return json.dumps(msg)
+    return msg
 
-async def echo(websocket):
-    messages_per_second = 60
+def main(s: Simulation):
+    sim_data = []
+    sim_data.append(init_message(s))
+    
+    try:
+        while True:
+            s.step()
+            sim_data.append(update_message(s))
+    except:
+        with open("test.sim", "w") as f:
+            json.dump(sim_data, f)
 
-    await websocket.send(init_message(s))
-    for _ in itertools.count():
-        await asyncio.sleep(1 / messages_per_second)
-        s.step()
-        await websocket.send(update_message(s))
 
-async def main():
-    async with websockets.serve(echo, "localhost", 8765):
-        await asyncio.Future()  # run forever
-
-s = Simulation(inclination=0.6, num_orbital_planes=1, satellites_per_plane=1, semimajor_axis=6_921_000, time_step=10)
-asyncio.run(main())
+if __name__ == "__main__":
+    s = Simulation(inclination=0.6, num_orbital_planes=10, satellites_per_plane=20, semimajor_axis=6_921_000, time_step=10)
+    main(s)

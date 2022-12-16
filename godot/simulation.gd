@@ -23,10 +23,11 @@ func _ready():
 	earth.mesh = mesh
 
 	var file = File.new()
-	if not file.file_exists("../src/test.sim"):
+	var filename = "../data/test.sim"
+	if not file.file_exists(filename):
 		print("File not found")
 		return
-	file.open("../src/test.sim", File.READ)
+	file.open(filename, File.READ)
 	sim_data = parse_json(file.get_as_text())
 	_init_simulation(sim_data[0])
 

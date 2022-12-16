@@ -13,9 +13,10 @@ Project for the Modelling and Simulation (MS) curricular unit.
 pip install -r requirements.txt
 ```
 
-- Start the server:
+- Run the Simulation to generate the Simulation Data File:
 
 ```
-cd src
-python3 -m iscs.websockets.server
+python3 src/main.py
 ```
+
+- Run Godot.

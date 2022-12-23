@@ -50,10 +50,11 @@ func _update_simulation(json):
 		
 		var position = array_to_vector3(data["position"]) * SCALE
 		var velocity = array_to_vector3(data["velocity"]) * SCALE
-	
-		satellite.reset_physics_interpolation()
+		
 		satellite.global_translation = position
 		satellite.velocity = velocity
+		
+		satellite.reset_physics_interpolation()
 	
 	hud.update_hud(json)
 

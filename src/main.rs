@@ -13,7 +13,7 @@ fn main() -> std::io::Result<()> {
         20,
         0.6,
         EARTH_RADIUS + orbiting_altitude,
-        10.0
+        1.0,
     );
 
     let server = TcpListener::bind("127.0.0.1:1234").unwrap();
@@ -25,7 +25,7 @@ fn main() -> std::io::Result<()> {
 
         loop {
             sim.step();
-            std::thread::sleep(Duration::from_millis(150));
+            std::thread::sleep(Duration::from_millis(100));
             websocket.write_message(Message::Text(update_msg(&sim))).unwrap();
         }
     }

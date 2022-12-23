@@ -10,7 +10,7 @@ script = ExtResource( 1 )
 satellite_scene = ExtResource( 3 )
 
 [node name="Earth" parent="." instance=ExtResource( 2 )]
-transform = Transform( 7, 0, 0, 0, 7, 0, 0, 0, 7, 0, 0, 0 )
+transform = Transform( 6.55671, 2.45145, 0, -2.45145, 6.55671, 0, 0, 0, 7, 0, 0, 0 )
 
 [node name="CameraGimbal" parent="." instance=ExtResource( 4 )]
 

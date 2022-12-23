@@ -6,18 +6,13 @@ const SCALE := 2e-6
 export(String) var websocket_url = "ws://localhost:1234"
 export(PackedScene) var satellite_scene
 
-onready var earth: MeshInstance = $Earth
 onready var satellites_root: Spatial = $SatellitesRoot
+onready var camera: Camera = $CameraGimbal/InnerGimbal/Camera
 
 var _client := WebSocketClient.new()
+var _selected_satellite: KinematicBody
 
 func _ready():
-	var mesh = SphereMesh.new()
-	mesh.radius = EARTH_RADIUS * SCALE
-	mesh.height = 2 * mesh.radius
-
-	earth.mesh = mesh
-	
 	_client.connect("connection_established", self, "_connected")
 	_client.connect("data_received", self, "_on_data")
 
@@ -31,10 +26,11 @@ func array_to_vector3(arr: Array) -> Vector3:
 
 func _init_simulation(json):
 	var satellites: Dictionary = json["satellites"]
-
+	
 	for id in satellites:
-		var _data = satellites[id] # TODO
-		satellites_root.add_child(satellite_scene.instance())
+		var instance = satellite_scene.instance()
+		instance.id = int(id)
+		satellites_root.add_child(instance)
 
 func _update_simulation(json):
 	var satellites: Dictionary = json["satellites"]
@@ -51,6 +47,16 @@ func _update_simulation(json):
 		satellite.velocity = velocity
 
 func _physics_process(_delta: float):
+	if Input.is_action_just_pressed("select"):
+		var mouse_pos := get_viewport().get_mouse_position()
+		var from := camera.project_ray_origin(mouse_pos)
+		var to := camera.project_ray_normal(mouse_pos) * camera.far
+
+		var ray_result := get_world().direct_space_state.intersect_ray(from, to, [self])
+		
+		if ray_result:
+			_selected_satellite = ray_result.collider
+
 	_client.poll()
 
 func _connected(_proto: String = ""):

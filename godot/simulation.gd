@@ -1,5 +1,7 @@
 extends Spatial
 
+signal satellite_selected(satellite)
+
 const EARTH_RADIUS := 6.371e6
 const SCALE := 2e-6
 
@@ -14,11 +16,13 @@ var _client := WebSocketClient.new()
 var _selected_satellite: KinematicBody
 
 func _ready():
+	connect("satellite_selected", hud, "on_satellite_selected")
+	
 	$Earth.scale = EARTH_RADIUS * SCALE * Vector3.ONE
-
+	
 	_client.connect("connection_established", self, "_connected")
 	_client.connect("data_received", self, "_on_data")
-
+	
 	var err := _client.connect_to_url(websocket_url)
 	if err != OK:
 		print("Unable to connect to host.")
@@ -46,7 +50,7 @@ func _update_simulation(json):
 		
 		var position = array_to_vector3(data["position"]) * SCALE
 		var velocity = array_to_vector3(data["velocity"]) * SCALE
-
+	
 		satellite.reset_physics_interpolation()
 		satellite.global_translation = position
 		satellite.velocity = velocity
@@ -58,12 +62,13 @@ func _physics_process(_delta: float):
 		var mouse_pos := get_viewport().get_mouse_position()
 		var from := camera.project_ray_origin(mouse_pos)
 		var to := camera.project_ray_normal(mouse_pos) * camera.far
-
+		
 		var ray_result := get_world().direct_space_state.intersect_ray(from, to, [self])
 		
 		if ray_result:
 			_selected_satellite = ray_result.collider
-
+			emit_signal("satellite_selected", _selected_satellite)
+	
 	_client.poll()
 
 func _connected(_proto: String = ""):
@@ -71,7 +76,7 @@ func _connected(_proto: String = ""):
 
 func _on_data():
 	var json := JSON.parse(_client.get_peer(1).get_packet().get_string_from_utf8())
-
+	
 	if json.error == OK:
 		var result = json.result
 		match result["msg_type"]:

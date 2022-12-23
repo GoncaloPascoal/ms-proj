@@ -37,13 +37,13 @@ valign = 1
 
 [node name="SatelliteInfo" type="Panel" parent="."]
 margin_top = 108.0
-margin_right = 192.0
+margin_right = 384.0
 margin_bottom = 236.0
 
 [node name="Title" type="Label" parent="SatelliteInfo"]
 margin_left = 12.0
 margin_top = 12.0
-margin_right = 176.0
+margin_right = 372.0
 margin_bottom = 28.0
 text = "SELECTED SATELLITE"
 align = 1

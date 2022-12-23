@@ -85,7 +85,7 @@ impl Simulation {
 
             for j in 0..satellites_per_plane {
                 satellites.push(Satellite::new(
-                    j,
+                    i * satellites_per_plane + j,
                     Rc::clone(&orbital_plane),
                     2.0 * PI * j as f64 / satellites_per_plane as f64,
                 ));

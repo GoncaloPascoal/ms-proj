@@ -37,8 +37,8 @@ func _init_simulation(json):
 		satellites_root.add_child(satellite_scene.instance())
 
 func _update_simulation(json):
-	var satellites = json["satellites"]
-
+	var satellites: Dictionary = json["satellites"]
+	
 	for id in satellites:
 		var data = satellites[id]
 		var satellite = satellites_root.get_child(int(id))

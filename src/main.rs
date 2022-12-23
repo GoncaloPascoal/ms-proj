@@ -1,6 +1,7 @@
 
-use std::{f64::consts::PI, rc::Rc};
+use std::{f64::consts::PI, rc::Rc, fs::File, io::Write};
 
+use json::{object, JsonValue};
 use nalgebra::{Vector3, Rotation3};
 
 const GM: f64 = 3.986004418e14;
@@ -106,15 +107,72 @@ impl Simulation {
     }
 }
 
+fn init_msg(sim: &Simulation) -> String {
+    let first_plane = sim.orbital_planes.get(0);
+
+    let semimajor_axis = first_plane.map(|p| p.semimajor_axis).unwrap_or(0.0);
+    let inclination = first_plane.map(|p| p.inclination).unwrap_or(0.0);
+
+    let mut orbital_planes = JsonValue::new_object();
+    for plane in &sim.orbital_planes {
+        orbital_planes[plane.id.to_string()] = object! {
+            longitude: plane.longitude,
+        }
+    }
+
+    let mut satellites = JsonValue::new_object();
+    for sat in &sim.satellites {
+        satellites[sat.id.to_string()] = object! {
+            orbital_plane: sat.orbital_plane.id.to_string(),
+            arg_periapsis: sat.arg_periapsis,
+        }
+    }
+
+    let obj = object! {
+        msg_type: "init",
+        semimajor_axis: semimajor_axis,
+        inclination: inclination,
+        orbital_planes: orbital_planes,
+        satellites: satellites,
+    };
+    
+    obj.dump()
+}
+
+fn update_msg(sim: &Simulation) -> String {
+    let mut satellites = JsonValue::new_object();
+    for sat in &sim.satellites {
+        satellites[sat.id.to_string()] = object! {
+            position: sat.calc_position(sim.t).as_slice(),
+            velocity: sat.calc_velocity(sim.t).as_slice(),
+        };
+    }
+
+    let obj = object! {
+        msg_type: "update",
+        t: sim.t,
+        satellites: satellites,
+    };
+
+    obj.dump()
+}
+
 fn main() {
     let orbiting_altitude = 0.55e6;
-    let mut s = Simulation::new(10, 20, 0.6, EARTH_RADIUS + orbiting_altitude, 10.0);
+    let mut sim = Simulation::new(
+        10,
+        20,
+        0.6,
+        EARTH_RADIUS + orbiting_altitude,
+        10.0
+    );
 
-    for _ in 0..1000 {
-        s.step();
-        for sat in &s.satellites {
-            sat.calc_position(s.t);
-            sat.calc_velocity(s.t);
+    if let Ok(mut file) = File::create("data/test.sim") {
+        file.write_all(init_msg(&sim).as_bytes()).unwrap();
+
+        for _ in 0..1000 {
+            sim.step();
+            file.write_all(update_msg(&sim).as_bytes()).unwrap();
         }
     }
 }

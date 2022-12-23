@@ -3,36 +3,31 @@ extends Spatial
 const EARTH_RADIUS := 6.371e6
 const SCALE := 2e-6
 
-const FPS = 20.0
-
+export(String) var websocket_url = "ws://localhost:1234"
 export(PackedScene) var satellite_scene
 
 onready var earth: MeshInstance = $Earth
 onready var satellites_root: Spatial = $SatellitesRoot
 
-var time_since_start = 0
-var timestamp_index = 1
-var sim_data = {}
+var _client := WebSocketClient.new()
 
 func _ready():
 	var mesh = SphereMesh.new()
 	mesh.radius = EARTH_RADIUS * SCALE
 	mesh.height = 2 * mesh.radius
-	mesh.material = load("mat.tres")
 
 	earth.mesh = mesh
+	
+	_client.connect("connection_established", self, "_connected")
+	_client.connect("data_received", self, "_on_data")
 
-	var file = File.new()
-	var filename = "../data/test.sim"
-	if not file.file_exists(filename):
-		print("File not found")
-		return
-	file.open(filename, File.READ)
-	sim_data = parse_json(file.get_as_text())
-	_init_simulation(sim_data[0])
+	var err := _client.connect_to_url(websocket_url)
+	if err != OK:
+		print("Unable to connect to host.")
+		set_physics_process(false)
 
-func list_to_vector3(l) -> Vector3:
-	return Vector3(l[0], l[1], l[2])
+func array_to_vector3(arr: Array) -> Vector3:
+	return Vector3(arr[0], arr[1], arr[2])
 
 func _init_simulation(json):
 	var satellites: Dictionary = json["satellites"]
@@ -42,26 +37,30 @@ func _init_simulation(json):
 		satellites_root.add_child(satellite_scene.instance())
 
 func _update_simulation(json):
-	var satellites = json["satellites"]
-
+	var satellites: Dictionary = json["satellites"]
+	
 	for id in satellites:
 		var data = satellites[id]
 		var satellite = satellites_root.get_child(int(id))
 		
-		var position = list_to_vector3(data["position"]) * SCALE
-		var velocity = list_to_vector3(data["velocity"]) * SCALE
+		var position = array_to_vector3(data["position"]) * SCALE
+		var velocity = array_to_vector3(data["velocity"]) * SCALE
 
 		satellite.reset_physics_interpolation()
 		satellite.global_translation = position
 		satellite.velocity = velocity
 
 func _physics_process(_delta: float):
-	# ativar o update_simulation conforme necessário
-	time_since_start += _delta
-	if timestamp_index < len(sim_data) and timestamp_index / FPS < time_since_start:
-		_update_simulation(sim_data[timestamp_index])
-		timestamp_index += 1
+	_client.poll()
 
-func _input(event: InputEvent):
-	if event is InputEventMouseMotion:
-		pass
+func _connected(_proto: String = ""):
+	print("Connected to host!")
+
+func _on_data():
+	var json := JSON.parse(_client.get_peer(1).get_packet().get_string_from_utf8())
+
+	if json.error == OK:
+		var result = json.result
+		match result["msg_type"]:
+			"init": _init_simulation(result)
+			"update": _update_simulation(result)

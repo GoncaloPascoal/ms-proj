@@ -1,163 +1,12 @@
 
-use std::{f64::consts::PI, rc::Rc, fs::File, io::Write};
+use std::{net::TcpListener, time::Duration};
+use tungstenite::{Message, accept};
 
-use json::{object, JsonValue};
-use nalgebra::{Vector3, Rotation3};
+use model::{EARTH_RADIUS, Simulation, init_msg, update_msg};
 
-const GM: f64 = 3.986004418e14;
-const EARTH_RADIUS: f64 = 6.371e6;
+pub mod model;
 
-struct OrbitalPlane {
-    id: usize,
-    semimajor_axis: f64,
-    inclination: f64,
-    longitude: f64,
-    // Calculated fields
-    orbital_speed: f64,
-    angular_speed: f64,
-}
-
-impl OrbitalPlane {
-    fn new(id: usize, semimajor_axis: f64, inclination: f64, longitude: f64) -> Self {
-        let orbital_speed = f64::sqrt(GM / semimajor_axis);
-
-        OrbitalPlane {
-            id,
-            semimajor_axis,
-            inclination,
-            longitude,
-            orbital_speed,
-            angular_speed: orbital_speed / semimajor_axis,
-        }
-    }
-}
-
-struct Satellite {
-    id: usize,
-    orbital_plane: Rc<OrbitalPlane>,
-    arg_periapsis: f64,
-}
-
-impl Satellite {
-    fn new(id: usize, orbital_plane: Rc<OrbitalPlane>, arg_periapsis: f64) -> Self {
-        Satellite {
-            id,
-            orbital_plane,
-            arg_periapsis,
-        }
-    }
-
-    fn calc_position(&self, t: f64) -> Vector3<f64> {
-        let r = self.orbital_plane.semimajor_axis;
-        let true_anomaly = (t * self.orbital_plane.angular_speed) % (2.0 * PI);
-
-        let position = Vector3::new(r, 0.0, 0.0);
-
-        Rotation3::from_euler_angles(0.0, self.orbital_plane.longitude, 0.0) *
-        Rotation3::from_euler_angles(self.orbital_plane.inclination, 0.0, 0.0) *
-        Rotation3::from_euler_angles(0.0, self.arg_periapsis + true_anomaly, 0.0) *
-        position
-    }
-
-    fn calc_velocity(&self, t: f64) -> Vector3<f64> {
-        let direction = Rotation3::from_axis_angle(&Vector3::y_axis(), PI / 2.0) * self.calc_position(t).normalize();
-
-        self.orbital_plane.orbital_speed * direction
-    }
-}
-
-struct Simulation {
-    orbital_planes: Vec<Rc<OrbitalPlane>>,
-    satellites: Vec<Satellite>,
-    time_step: f64,
-    t: f64,
-}
-
-impl Simulation {
-    fn new(num_orbital_planes: usize, satellites_per_plane: usize, inclination: f64, semimajor_axis: f64, time_step: f64) -> Self {
-        let mut orbital_planes = Vec::with_capacity(num_orbital_planes);
-        let mut satellites = Vec::with_capacity(num_orbital_planes * satellites_per_plane);
-
-        for i in 0..num_orbital_planes {
-            let orbital_plane = Rc::new(OrbitalPlane::new(
-                i, semimajor_axis, inclination, 2.0 * PI * i as f64 / num_orbital_planes as f64,
-            ));
-
-            for j in 0..satellites_per_plane {
-                satellites.push(Satellite::new(
-                    j,
-                    Rc::clone(&orbital_plane),
-                    2.0 * PI * j as f64 / satellites_per_plane as f64,
-                ));
-            }
-
-            orbital_planes.push(orbital_plane);
-        }
-
-        Simulation {
-            orbital_planes,
-            satellites,
-            time_step,
-            t: 0.0,
-        }
-    }
-
-    fn step(&mut self) {
-        self.t += self.time_step;
-    }
-}
-
-fn init_msg(sim: &Simulation) -> String {
-    let first_plane = sim.orbital_planes.get(0);
-
-    let semimajor_axis = first_plane.map(|p| p.semimajor_axis).unwrap_or(0.0);
-    let inclination = first_plane.map(|p| p.inclination).unwrap_or(0.0);
-
-    let mut orbital_planes = JsonValue::new_object();
-    for plane in &sim.orbital_planes {
-        orbital_planes[plane.id.to_string()] = object! {
-            longitude: plane.longitude,
-        }
-    }
-
-    let mut satellites = JsonValue::new_object();
-    for sat in &sim.satellites {
-        satellites[sat.id.to_string()] = object! {
-            orbital_plane: sat.orbital_plane.id.to_string(),
-            arg_periapsis: sat.arg_periapsis,
-        }
-    }
-
-    let obj = object! {
-        msg_type: "init",
-        semimajor_axis: semimajor_axis,
-        inclination: inclination,
-        orbital_planes: orbital_planes,
-        satellites: satellites,
-    };
-    
-    obj.dump()
-}
-
-fn update_msg(sim: &Simulation) -> String {
-    let mut satellites = JsonValue::new_object();
-    for sat in &sim.satellites {
-        satellites[sat.id.to_string()] = object! {
-            position: sat.calc_position(sim.t).as_slice(),
-            velocity: sat.calc_velocity(sim.t).as_slice(),
-        };
-    }
-
-    let obj = object! {
-        msg_type: "update",
-        t: sim.t,
-        satellites: satellites,
-    };
-
-    obj.dump()
-}
-
-fn main() {
+fn main() -> std::io::Result<()> {
     let orbiting_altitude = 0.55e6;
     let mut sim = Simulation::new(
         10,
@@ -167,12 +16,19 @@ fn main() {
         10.0
     );
 
-    if let Ok(mut file) = File::create("data/test.sim") {
-        file.write_all(init_msg(&sim).as_bytes()).unwrap();
+    let server = TcpListener::bind("127.0.0.1:1234").unwrap();
 
-        for _ in 0..1000 {
+    for stream in server.incoming() {
+        let mut websocket = accept(stream?).unwrap();
+
+        websocket.write_message(Message::Text(init_msg(&sim))).unwrap();
+
+        loop {
             sim.step();
-            file.write_all(update_msg(&sim).as_bytes()).unwrap();
+            std::thread::sleep(Duration::from_millis(150));
+            websocket.write_message(Message::Text(update_msg(&sim))).unwrap();
         }
     }
+
+    Ok(())
 }

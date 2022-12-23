@@ -1,7 +1,10 @@
-use std::{io::Write, net::TcpListener};
+
+use std::{net::TcpListener, time::Duration};
+use tungstenite::{Message, accept};
+
+use model::{EARTH_RADIUS, Simulation, init_msg, update_msg};
 
 pub mod model;
-use model::{EARTH_RADIUS, Simulation, init_msg, update_msg};
 
 fn main() -> std::io::Result<()> {
     let orbiting_altitude = 0.55e6;
@@ -12,17 +15,18 @@ fn main() -> std::io::Result<()> {
         EARTH_RADIUS + orbiting_altitude,
         10.0
     );
-    
-    let listener = TcpListener::bind("127.0.0.1:1234")?;
 
-    // accept connections and process them serially
-    for stream in listener.incoming() {
-        let mut stream = stream?;
-        stream.write_all(init_msg(&sim).as_bytes());
+    let server = TcpListener::bind("127.0.0.1:9001").unwrap();
 
-        for _ in 0..1000 {
+    for stream in server.incoming() {
+        let mut websocket = accept(stream?).unwrap();
+
+        websocket.write_message(Message::Text(init_msg(&sim))).unwrap();
+
+        loop {
             sim.step();
-            stream.write_all(update_msg(&sim).as_bytes());
+            std::thread::sleep(Duration::from_millis(150));
+            websocket.write_message(Message::Text(update_msg(&sim))).unwrap();
         }
     }
 

@@ -16,7 +16,7 @@ fn main() -> std::io::Result<()> {
         10.0
     );
 
-    let server = TcpListener::bind("127.0.0.1:9001").unwrap();
+    let server = TcpListener::bind("127.0.0.1:1234").unwrap();
 
     for stream in server.incoming() {
         let mut websocket = accept(stream?).unwrap();

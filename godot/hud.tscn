@@ -1,0 +1,74 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://hud.gd" type="Script" id=1]
+
+[node name="HUD" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource( 1 )
+
+[node name="SimulationInfo" type="Panel" parent="."]
+margin_right = 192.0
+margin_bottom = 96.0
+
+[node name="OrbitalPlanes" type="Label" parent="SimulationInfo"]
+margin_left = 12.0
+margin_top = 12.0
+margin_right = 176.0
+margin_bottom = 28.0
+text = "Orbital Planes: 0"
+valign = 1
+
+[node name="Satellites" type="Label" parent="SimulationInfo"]
+margin_left = 12.0
+margin_top = 40.0
+margin_right = 176.0
+margin_bottom = 56.0
+text = "Satellites: 0"
+valign = 1
+
+[node name="TimeStep" type="Label" parent="SimulationInfo"]
+margin_left = 12.0
+margin_top = 68.0
+margin_right = 176.0
+margin_bottom = 84.0
+text = "Time: 0"
+valign = 1
+
+[node name="SatelliteInfo" type="Panel" parent="."]
+margin_top = 108.0
+margin_right = 192.0
+margin_bottom = 236.0
+
+[node name="Title" type="Label" parent="SatelliteInfo"]
+margin_left = 12.0
+margin_top = 12.0
+margin_right = 176.0
+margin_bottom = 28.0
+text = "SELECTED SATELLITE"
+align = 1
+valign = 1
+
+[node name="ID" type="Label" parent="SatelliteInfo"]
+margin_left = 12.0
+margin_top = 40.0
+margin_right = 176.0
+margin_bottom = 56.0
+text = "ID: 0"
+valign = 1
+
+[node name="Position" type="Label" parent="SatelliteInfo"]
+margin_left = 12.0
+margin_top = 68.0
+margin_right = 176.0
+margin_bottom = 84.0
+text = "Position: 0"
+valign = 1
+
+[node name="Velocity" type="Label" parent="SatelliteInfo"]
+margin_left = 12.0
+margin_top = 96.0
+margin_right = 176.0
+margin_bottom = 112.0
+text = "Velocity: 0"
+valign = 1

@@ -6,6 +6,7 @@ const SCALE := 2e-6
 export(String) var websocket_url = "ws://localhost:1234"
 export(PackedScene) var satellite_scene
 
+onready var hud: Control = $HUD
 onready var satellites_root: Spatial = $SatellitesRoot
 onready var camera: Camera = $CameraGimbal/InnerGimbal/Camera
 
@@ -13,6 +14,8 @@ var _client := WebSocketClient.new()
 var _selected_satellite: KinematicBody
 
 func _ready():
+	$Earth.scale = EARTH_RADIUS * SCALE * Vector3.ONE
+
 	_client.connect("connection_established", self, "_connected")
 	_client.connect("data_received", self, "_on_data")
 
@@ -31,6 +34,8 @@ func _init_simulation(json):
 		var instance = satellite_scene.instance()
 		instance.id = int(id)
 		satellites_root.add_child(instance)
+	
+	hud.init_hud(json)
 
 func _update_simulation(json):
 	var satellites: Dictionary = json["satellites"]
@@ -45,6 +50,8 @@ func _update_simulation(json):
 		satellite.reset_physics_interpolation()
 		satellite.global_translation = position
 		satellite.velocity = velocity
+	
+	hud.update_hud(json)
 
 func _physics_process(_delta: float):
 	if Input.is_action_just_pressed("select"):

@@ -1,19 +1,69 @@
-
-use std::{net::TcpListener, time::Duration};
+use std::{fs, env, path::Path, net::TcpListener, time::Duration};
 use tungstenite::{Message, accept};
+use toml::{Value};
 
 use model::{EARTH_RADIUS, Simulation, init_msg, update_msg};
 
 pub mod model;
 
 fn main() -> std::io::Result<()> {
-    let orbiting_altitude = 0.55e6;
+    let args: Vec<String> = env::args().collect();
+
+    let orbiting_altitude : f64;
+    let num_orbital_planes : usize;
+    let satellites_per_plane : usize;
+    let inclination : f64;
+    let time_step : f64;
+    let starting_failure_rate : f64;
+
+    if args.len() == 1 {
+        orbiting_altitude = 0.55e6;
+        num_orbital_planes = 10;
+        satellites_per_plane = 20;
+        inclination = 0.6;
+        time_step = 1.0;
+        starting_failure_rate = 0.0;
+    } else if args.len() == 2 {
+        let path = Path::new(&args[1]);
+        if !path.exists() {
+            panic!("Path doesn't exist!")
+        }
+        let contents = fs::read_to_string(path).unwrap().parse::<Value>().unwrap();
+
+        let constellation_parameters = match &contents["constellation parameters"] {
+            Value::Table(t) => t,
+            _ => panic!(),
+        };
+
+        let simulation_parameters = match &contents["simulation parameters"] {
+            Value::Table(t) => t,
+            _ => panic!(),
+        };
+
+        orbiting_altitude    = constellation_parameters["altitude"]                .as_float()  .unwrap();
+        num_orbital_planes   = constellation_parameters["number of orbital planes"].as_integer().unwrap() as usize;
+        satellites_per_plane = constellation_parameters["satellites per plane"]    .as_integer().unwrap() as usize;
+        inclination          = constellation_parameters["inclination"]             .as_float()  .unwrap();
+        
+        time_step            = simulation_parameters["timestep"]                   .as_float()  .unwrap();
+
+        if simulation_parameters.contains_key("starting failure rate") {
+            starting_failure_rate = simulation_parameters["starting failure rate"].as_float().unwrap();
+            assert!(0.0 <= starting_failure_rate && starting_failure_rate <= 1.0);
+        } else {
+            starting_failure_rate = 0.0;
+        }
+    } else {
+        panic!("More than one argument!");
+    }
+    
     let mut sim = Simulation::new(
-        10,
-        20,
-        0.6,
+        num_orbital_planes,
+        satellites_per_plane,
+        inclination,
         EARTH_RADIUS + orbiting_altitude,
-        1.0,
+        time_step,
+        starting_failure_rate,
     );
 
     let server = TcpListener::bind("127.0.0.1:1234").unwrap();

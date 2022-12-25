@@ -5,7 +5,10 @@ altitude = 0.55e6
 "number of orbital planes" = 10
 "satellites per plane" = 20
 "inclination" = 0.6
+"connections" = 4
+"connection range" = 1e10 # What's a good value for here? have to research
 
 ["simulation parameters"]
 timestep = 1.0
 "starting failure rate" = 0.0
+"number of steps per connection update" = 10

@@ -13,16 +13,24 @@ fn main() -> std::io::Result<()> {
     let num_orbital_planes : usize;
     let satellites_per_plane : usize;
     let inclination : f64;
+    let n_connections : usize;
+    let connection_range : f64;
+
     let time_step : f64;
     let starting_failure_rate : f64;
+    let steps_per_update : usize;
 
     if args.len() == 1 {
         orbiting_altitude = 0.55e6;
         num_orbital_planes = 10;
         satellites_per_plane = 20;
         inclination = 0.6;
+        n_connections = 4;
+        connection_range = 1e10;
+
         time_step = 1.0;
         starting_failure_rate = 0.0;
+        steps_per_update = 10;
     } else if args.len() == 2 {
         let path = Path::new(&args[1]);
         if !path.exists() {
@@ -44,6 +52,8 @@ fn main() -> std::io::Result<()> {
         num_orbital_planes   = constellation_parameters["number of orbital planes"].as_integer().unwrap() as usize;
         satellites_per_plane = constellation_parameters["satellites per plane"]    .as_integer().unwrap() as usize;
         inclination          = constellation_parameters["inclination"]             .as_float()  .unwrap();
+        n_connections        = constellation_parameters["connections"]             .as_integer().unwrap() as usize;
+        connection_range     = constellation_parameters["connection range"]        .as_float().unwrap();
         
         time_step            = simulation_parameters["timestep"]                   .as_float()  .unwrap();
 
@@ -53,6 +63,7 @@ fn main() -> std::io::Result<()> {
         } else {
             starting_failure_rate = 0.0;
         }
+        steps_per_update = simulation_parameters["number of steps per connection update"].as_integer().unwrap() as usize;
     } else {
         panic!("More than one argument!");
     }
@@ -64,6 +75,9 @@ fn main() -> std::io::Result<()> {
         EARTH_RADIUS + orbiting_altitude,
         time_step,
         starting_failure_rate,
+        n_connections,
+        connection_range,
+        steps_per_update,
     );
 
     let server = TcpListener::bind("127.0.0.1:1234").unwrap();

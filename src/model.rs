@@ -38,15 +38,26 @@ struct Satellite {
     orbital_plane: Rc<OrbitalPlane>,
     arg_periapsis: f64,
     alive: bool,
+    max_number_of_connections : usize,
+    connection_max_range : f64,
 }
 
 impl Satellite {
-    fn new(id: usize, orbital_plane: Rc<OrbitalPlane>, arg_periapsis: f64, alive: bool) -> Self {
+    fn new(
+        id: usize, 
+        orbital_plane: Rc<OrbitalPlane>, 
+        arg_periapsis: f64, 
+        alive: bool,
+        max_number_of_connections : usize,
+        connection_max_range : f64,
+    ) -> Self {
         Satellite {
             id,
             orbital_plane,
             arg_periapsis,
             alive,
+            max_number_of_connections,
+            connection_max_range,
         }
     }
 
@@ -74,10 +85,21 @@ pub struct Simulation {
     satellites: Vec<Satellite>,
     time_step: f64,
     t: f64,
+    steps_per_connection_update : usize
 }
 
 impl Simulation {
-    pub fn new(num_orbital_planes: usize, satellites_per_plane: usize, inclination: f64, semimajor_axis: f64, time_step: f64, starting_failure_rate : f64) -> Self {
+    pub fn new(
+        num_orbital_planes: usize, 
+        satellites_per_plane: usize, 
+        inclination: f64, 
+        semimajor_axis: f64, 
+        time_step: f64, 
+        starting_failure_rate : f64, 
+        n_connections : usize, 
+        connection_range : f64, 
+        steps_per_connection_update : usize,
+    ) -> Self {
         let mut rng = rand::thread_rng();
         
         let mut orbital_planes = Vec::with_capacity(num_orbital_planes);
@@ -94,6 +116,8 @@ impl Simulation {
                     Rc::clone(&orbital_plane),
                     2.0 * PI * j as f64 / satellites_per_plane as f64,
                     if rng.gen::<f64>() >= starting_failure_rate {true} else {false},
+                    n_connections,
+                    connection_range,
                 ));
             }
 
@@ -105,6 +129,7 @@ impl Simulation {
             satellites,
             time_step,
             t: 0.0,
+            steps_per_connection_update,
         }
     }
 

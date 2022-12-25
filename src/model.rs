@@ -3,6 +3,7 @@ use std::{f64::consts::PI, rc::Rc};
 
 use json::{object, JsonValue};
 use nalgebra::{Vector3, Rotation3};
+use rand::prelude::*;
 
 pub const GM: f64 = 3.986004418e14;
 pub const EARTH_RADIUS: f64 = 6.371e6;
@@ -36,14 +37,16 @@ struct Satellite {
     id: usize,
     orbital_plane: Rc<OrbitalPlane>,
     arg_periapsis: f64,
+    alive: bool,
 }
 
 impl Satellite {
-    fn new(id: usize, orbital_plane: Rc<OrbitalPlane>, arg_periapsis: f64) -> Self {
+    fn new(id: usize, orbital_plane: Rc<OrbitalPlane>, arg_periapsis: f64, alive: bool) -> Self {
         Satellite {
             id,
             orbital_plane,
             arg_periapsis,
+            alive,
         }
     }
 
@@ -74,7 +77,9 @@ pub struct Simulation {
 }
 
 impl Simulation {
-    pub fn new(num_orbital_planes: usize, satellites_per_plane: usize, inclination: f64, semimajor_axis: f64, time_step: f64) -> Self {
+    pub fn new(num_orbital_planes: usize, satellites_per_plane: usize, inclination: f64, semimajor_axis: f64, time_step: f64, starting_failure_rate : f64) -> Self {
+        let mut rng = rand::thread_rng();
+        
         let mut orbital_planes = Vec::with_capacity(num_orbital_planes);
         let mut satellites = Vec::with_capacity(num_orbital_planes * satellites_per_plane);
 
@@ -88,6 +93,7 @@ impl Simulation {
                     i * satellites_per_plane + j,
                     Rc::clone(&orbital_plane),
                     2.0 * PI * j as f64 / satellites_per_plane as f64,
+                    if rng.gen::<f64>() >= starting_failure_rate {true} else {false},
                 ));
             }
 
@@ -145,6 +151,7 @@ pub fn update_msg(sim: &Simulation) -> String {
         satellites[sat.id.to_string()] = object! {
             position: sat.calc_position(sim.t).as_slice(),
             velocity: sat.calc_velocity(sim.t).as_slice(),
+            alive: sat.alive,
         };
     }
 

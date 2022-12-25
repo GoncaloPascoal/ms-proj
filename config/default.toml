@@ -1,0 +1,10 @@
+name = "default constellation"
+
+["constellation parameters"]
+altitude = 0.55e6
+"number of orbital planes" = 10
+"satellites per plane" = 20
+"inclination" = 0.6
+
+["simulation parameters"]
+timestep = 1.0

@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 json = "0.12.4"
 nalgebra = "0.31.4"
+toml = "0.5.10"
 tungstenite = "0.18.0"

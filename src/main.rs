@@ -1,4 +1,4 @@
-use std::{fs, env, path::Path, net::TcpListener, time::Duration};
+use std::{fs, env, path::Path, net::TcpListener, thread, time::Duration};
 use tungstenite::{Message, accept};
 use toml::{Value};
 
@@ -6,7 +6,7 @@ use model::{EARTH_RADIUS, Simulation, init_msg, update_msg};
 
 pub mod model;
 
-fn main() -> std::io::Result<()> {
+fn main() -> thread::Result<()> {
     let args: Vec<String> = env::args().collect();
 
     let orbiting_altitude : f64;
@@ -80,6 +80,15 @@ fn main() -> std::io::Result<()> {
         connection_refresh_time,
     );
 
+    let simulation_steps = 10000;
+    let handle = thread::spawn(move || { server(&mut sim, simulation_steps) });
+
+    handle.join();
+
+    Ok(())
+}
+
+fn server(sim : &mut Simulation, simulation_steps : usize) -> std::io::Result<()> {
     let server = TcpListener::bind("127.0.0.1:1234").unwrap();
 
     for stream in server.incoming() {
@@ -87,11 +96,12 @@ fn main() -> std::io::Result<()> {
 
         websocket.write_message(Message::Text(init_msg(&sim))).unwrap();
 
-        loop {
+        for _ in 0..simulation_steps {
             sim.step();
             std::thread::sleep(Duration::from_millis(100));
             websocket.write_message(Message::Text(update_msg(&sim))).unwrap();
         }
+        break;
     }
 
     Ok(())

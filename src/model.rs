@@ -1,5 +1,5 @@
 
-use std::{f64::consts::PI, rc::Rc};
+use std::{f64::consts::PI, sync::Arc};
 
 use json::{object, JsonValue};
 use nalgebra::{Vector3, Rotation3};
@@ -35,7 +35,7 @@ impl OrbitalPlane {
 
 struct Satellite {
     id: usize,
-    orbital_plane: Rc<OrbitalPlane>,
+    orbital_plane: Arc<OrbitalPlane>,
     arg_periapsis: f64,
     alive: bool,
     max_number_of_connections : usize,
@@ -45,7 +45,7 @@ struct Satellite {
 impl Satellite {
     fn new(
         id: usize, 
-        orbital_plane: Rc<OrbitalPlane>, 
+        orbital_plane: Arc<OrbitalPlane>, 
         arg_periapsis: f64, 
         alive: bool,
         max_number_of_connections : usize,
@@ -81,7 +81,7 @@ impl Satellite {
 }
 
 pub struct Simulation {
-    orbital_planes: Vec<Rc<OrbitalPlane>>,
+    orbital_planes: Vec<Arc<OrbitalPlane>>,
     satellites: Vec<Satellite>,
     time_step: f64,
     t: f64,
@@ -107,14 +107,14 @@ impl Simulation {
         let mut satellites = Vec::with_capacity(num_orbital_planes * satellites_per_plane);
 
         for i in 0..num_orbital_planes {
-            let orbital_plane = Rc::new(OrbitalPlane::new(
+            let orbital_plane = Arc::new(OrbitalPlane::new(
                 i, semimajor_axis, inclination, 2.0 * PI * i as f64 / num_orbital_planes as f64,
             ));
 
             for j in 0..satellites_per_plane {
                 satellites.push(Satellite::new(
                     i * satellites_per_plane + j,
-                    Rc::clone(&orbital_plane),
+                    Arc::clone(&orbital_plane),
                     2.0 * PI * j as f64 / satellites_per_plane as f64,
                     if rng.gen::<f64>() >= starting_failure_rate {true} else {false},
                     n_connections,

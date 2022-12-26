@@ -1,6 +1,7 @@
-use std::{fs, env, path::Path, net::TcpListener, thread, time::Duration};
+
+use std::{fs, env, path::Path, net::TcpListener, sync::Arc, sync::Mutex, thread, time::Duration};
 use tungstenite::{Message, accept};
-use toml::{Value};
+use toml::Value;
 
 use model::{EARTH_RADIUS, Simulation, init_msg, update_msg};
 
@@ -67,8 +68,8 @@ fn main() -> thread::Result<()> {
     } else {
         panic!("More than one argument!");
     }
-    
-    let mut sim = Simulation::new(
+
+    let sim = Arc::new(Mutex::new(Simulation::new(
         num_orbital_planes,
         satellites_per_plane,
         inclination,
@@ -78,29 +79,50 @@ fn main() -> thread::Result<()> {
         n_connections,
         connection_range,
         connection_refresh_time,
-    );
+    )));
 
-    let simulation_steps = 10000;
-    let handle = thread::spawn(move || { server(&mut sim, simulation_steps) });
+    let sim_server = Arc::clone(&sim);
 
-    handle.join();
+    let steps = 10000;
+
+    let simulation_handle = thread::spawn(move || { simulation_thread(sim, steps, 100) });
+    let server_handle = thread::spawn(move || { server_thread(sim_server, steps, 100) });
+
+    simulation_handle.join().expect("Couldn't join simulation thread.");
+    server_handle.join().expect("Couldn't join server thread.");
 
     Ok(())
 }
 
-fn server(sim : &mut Simulation, simulation_steps : usize) -> std::io::Result<()> {
-    let server = TcpListener::bind("127.0.0.1:1234").unwrap();
+fn simulation_thread(sim: Arc<Mutex<Simulation>>, simulation_steps: usize, delay_ms: u64) {
+    for _ in 0..simulation_steps {
+        thread::sleep(Duration::from_millis(delay_ms));
+        {
+            let mut lock = sim.lock().unwrap();
+            lock.step();
+        }
+    }
+}
 
-    for stream in server.incoming() {
+fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay_ms: u64) -> std::io::Result<()> {
+    let listener = TcpListener::bind("127.0.0.1:1234").unwrap();
+
+    for stream in listener.incoming() {
         let mut websocket = accept(stream?).unwrap();
 
-        websocket.write_message(Message::Text(init_msg(&sim))).unwrap();
-
-        for _ in 0..simulation_steps {
-            sim.step();
-            std::thread::sleep(Duration::from_millis(100));
-            websocket.write_message(Message::Text(update_msg(&sim))).unwrap();
+        {
+            let lock = sim.lock().unwrap();
+            websocket.write_message(Message::Text(init_msg(&lock))).unwrap();
         }
+
+        for _ in 0..communication_steps {
+            thread::sleep(Duration::from_millis(delay_ms));
+            {
+                let lock = sim.lock().unwrap();
+                websocket.write_message(Message::Text(update_msg(&lock))).unwrap();
+            }
+        }
+
         break;
     }
 

@@ -11,4 +11,4 @@ altitude = 0.55e6
 ["simulation parameters"]
 timestep = 1.0
 "starting failure rate" = 0.0
-"number of steps per connection update" = 10
+"connection refresh time" = 10.0

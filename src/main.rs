@@ -18,7 +18,7 @@ fn main() -> std::io::Result<()> {
 
     let time_step : f64;
     let starting_failure_rate : f64;
-    let steps_per_update : usize;
+    let connection_refresh_time : f64;
 
     if args.len() == 1 {
         orbiting_altitude = 0.55e6;
@@ -30,7 +30,7 @@ fn main() -> std::io::Result<()> {
 
         time_step = 1.0;
         starting_failure_rate = 0.0;
-        steps_per_update = 10;
+        connection_refresh_time = 10.0;
     } else if args.len() == 2 {
         let path = Path::new(&args[1]);
         if !path.exists() {
@@ -63,7 +63,7 @@ fn main() -> std::io::Result<()> {
         } else {
             starting_failure_rate = 0.0;
         }
-        steps_per_update = simulation_parameters["number of steps per connection update"].as_integer().unwrap() as usize;
+        connection_refresh_time = simulation_parameters["connection refresh time"].as_float().unwrap();
     } else {
         panic!("More than one argument!");
     }
@@ -77,7 +77,7 @@ fn main() -> std::io::Result<()> {
         starting_failure_rate,
         n_connections,
         connection_range,
-        steps_per_update,
+        connection_refresh_time,
     );
 
     let server = TcpListener::bind("127.0.0.1:1234").unwrap();

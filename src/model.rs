@@ -85,7 +85,8 @@ pub struct Simulation {
     satellites: Vec<Satellite>,
     time_step: f64,
     t: f64,
-    steps_per_connection_update : usize
+    connection_refresh_time : f64,
+    last_update_timestamp : f64,
 }
 
 impl Simulation {
@@ -98,7 +99,7 @@ impl Simulation {
         starting_failure_rate : f64, 
         n_connections : usize, 
         connection_range : f64, 
-        steps_per_connection_update : usize,
+        connection_refresh_time : f64,
     ) -> Self {
         let mut rng = rand::thread_rng();
         
@@ -129,7 +130,8 @@ impl Simulation {
             satellites,
             time_step,
             t: 0.0,
-            steps_per_connection_update,
+            connection_refresh_time,
+            last_update_timestamp : 0.0,
         }
     }
 

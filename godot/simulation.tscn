@@ -1,10 +1,11 @@
-[gd_scene load_steps=8 format=2]
+[gd_scene load_steps=9 format=2]
 
 [ext_resource path="res://simulation.gd" type="Script" id=1]
 [ext_resource path="res://earth.tscn" type="PackedScene" id=2]
 [ext_resource path="res://satellite.tscn" type="PackedScene" id=3]
 [ext_resource path="res://camera_gimbal.tscn" type="PackedScene" id=4]
 [ext_resource path="res://hud.tscn" type="PackedScene" id=5]
+[ext_resource path="res://space_env.tres" type="Environment" id=6]
 
 [sub_resource type="CylinderMesh" id=1]
 top_radius = 1.15
@@ -26,6 +27,9 @@ satellite_scene = ExtResource( 3 )
 
 [node name="HUD" parent="." instance=ExtResource( 5 )]
 
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = ExtResource( 6 )
+
 [node name="Earth" parent="." instance=ExtResource( 2 )]
 
 [node name="CameraGimbal" parent="." instance=ExtResource( 4 )]
@@ -36,3 +40,10 @@ satellite_scene = ExtResource( 3 )
 visible = false
 mesh = SubResource( 1 )
 material/0 = SubResource( 2 )
+
+[node name="DirectionalLight" type="DirectionalLight" parent="."]
+transform = Transform( 0.866025, 0.25, -0.433013, 0, 0.866025, 0.5, 0.5, -0.433013, 0.75, 0, 0, 0 )
+light_color = Color( 1, 0.87451, 0.74902, 1 )
+light_energy = 1.4
+light_specular = 0.25
+shadow_enabled = true

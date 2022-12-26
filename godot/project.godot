@@ -51,6 +51,11 @@ select={
  ]
 }
 
+[layer_names]
+
+3d_physics/layer_1="satellites"
+3d_physics/layer_2="earth"
+
 [physics]
 
 common/physics_fps=120

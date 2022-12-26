@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://models/earth.glb" type="PackedScene" id=1]
+
+[sub_resource type="SphereShape" id=1]
+
+[node name="Earth" type="Area"]
+collision_layer = 2
+collision_mask = 0
+
+[node name="Model" parent="." instance=ExtResource( 1 )]
+transform = Transform( 0.936672, 0.350207, 0, -0.350207, 0.936672, 0, 0, 0, 1, 0, 0, 0 )
+
+[node name="CollisionShape" type="CollisionShape" parent="."]
+shape = SubResource( 1 )

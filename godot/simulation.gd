@@ -37,7 +37,7 @@ func _ready():
 func array_to_vector3(arr: Array) -> Vector3:
 	return Vector3(arr[0], arr[1], arr[2])
 
-func _init_simulation(json):
+func _init_simulation(json: Dictionary):
 	var satellites: Dictionary = json["satellites"]
 	var semimajor_axis: float = json["semimajor_axis"]
 	
@@ -60,7 +60,7 @@ func _init_simulation(json):
 	
 	hud.init_hud(json)
 
-func _update_simulation(json):
+func _update_simulation(json: Dictionary):
 	var satellites: Dictionary = json["satellites"]
 	
 	for id in satellites:
@@ -85,8 +85,11 @@ func _physics_process(_delta: float):
 		
 		var ray_result := get_world().direct_space_state.intersect_ray(from, to, [self])
 		
-		if ray_result:
+		if ray_result and ray_result.collider.get_collision_layer_bit(0):
+			# Ray collided with a satellite
 			_select_satellite(ray_result.collider)
+		else:
+			_select_satellite(null)
 	
 	_client.poll()
 
@@ -101,6 +104,8 @@ func _select_satellite(satellite: KinematicBody):
 		orbital_plane.rotation.y = longitude
 		orbital_plane.visible = true
 		orbital_plane.reset_physics_interpolation()
+	else:
+		orbital_plane.visible = false
 	
 	emit_signal("satellite_selected", _selected_satellite)
 
@@ -112,6 +117,8 @@ func _on_data():
 	
 	if json.error == OK:
 		var result = json.result
-		match result["msg_type"]:
-			"init": _init_simulation(result)
-			"update": _update_simulation(result)
+		
+		if result is Dictionary:
+			match result["msg_type"]:
+				"init": _init_simulation(result)
+				"update": _update_simulation(result)

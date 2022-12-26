@@ -1,7 +1,7 @@
 [gd_scene load_steps=8 format=2]
 
 [ext_resource path="res://simulation.gd" type="Script" id=1]
-[ext_resource path="res://models/earth.glb" type="PackedScene" id=2]
+[ext_resource path="res://earth.tscn" type="PackedScene" id=2]
 [ext_resource path="res://satellite.tscn" type="PackedScene" id=3]
 [ext_resource path="res://camera_gimbal.tscn" type="PackedScene" id=4]
 [ext_resource path="res://hud.tscn" type="PackedScene" id=5]
@@ -27,7 +27,6 @@ satellite_scene = ExtResource( 3 )
 [node name="HUD" parent="." instance=ExtResource( 5 )]
 
 [node name="Earth" parent="." instance=ExtResource( 2 )]
-transform = Transform( 0.936672, 0.350207, 0, -0.350207, 0.936672, 0, 0, 0, 1, 0, 0, 0 )
 
 [node name="CameraGimbal" parent="." instance=ExtResource( 4 )]
 

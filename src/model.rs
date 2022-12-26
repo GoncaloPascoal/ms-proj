@@ -137,6 +137,14 @@ impl Simulation {
 
     pub fn step(&mut self) {
         self.t += self.time_step;
+        if self.t > self.last_update_timestamp + self.connection_refresh_time {
+            self.last_update_timestamp += self.connection_refresh_time;
+            self.update_connections()
+        }
+    }
+
+    pub fn update_connections(&mut self) {
+        //TODO
     }
 }
 

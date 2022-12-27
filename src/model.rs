@@ -261,10 +261,13 @@ pub fn update_msg(sim: &Simulation) -> String {
         };
     }
 
+    let connections: Vec<_> = sim.topology().all_edges().map(|(a, b, _)| vec![a, b]).collect();
+
     let obj = object! {
         msg_type: "update",
         t: sim.t(),
         satellites: satellites,
+        connections: connections,
     };
 
     obj.dump()

@@ -96,6 +96,9 @@ func _update_connections(connections: Array):
 		var instance: ImmediateGeometry = connection_scene.instance()
 		instance.sat_a = sat_a
 		instance.sat_b = sat_b
+		instance.set_selected(_selected_satellite == sat_a or _selected_satellite == sat_b)
+		connect("satellite_selected", instance, "on_satellite_selected")
+		
 		connections_root.add_child(instance)
 
 func _physics_process(_delta: float):

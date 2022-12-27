@@ -5,10 +5,12 @@ use nalgebra::{Vector3, Rotation3};
 use rand::prelude::*;
 use petgraph::{graphmap::GraphMap, Undirected};
 
+use crate::connection_strategy::{ConnectionStrategy, GridStrat};
+
 pub const GM: f64 = 3.986004418e14;
 pub const EARTH_RADIUS: f64 = 6.371e6;
 
-struct OrbitalPlane {
+pub struct OrbitalPlane {
     id: usize,
     semimajor_axis: f64,
     inclination: f64,
@@ -33,7 +35,7 @@ impl OrbitalPlane {
     }
 }
 
-struct Satellite {
+pub struct Satellite {
     id: usize,
     orbital_plane: Arc<OrbitalPlane>,
     arg_periapsis: f64,
@@ -61,7 +63,7 @@ impl Satellite {
         }
     }
 
-    fn calc_position(&self, t: f64) -> Vector3<f64> {
+    pub fn calc_position(&self, t: f64) -> Vector3<f64> {
         let r = self.orbital_plane.semimajor_axis;
         let true_anomaly = (t * self.orbital_plane.angular_speed) % (2.0 * PI);
 
@@ -88,6 +90,7 @@ pub struct Simulation {
     connection_refresh_time : f64,
     last_update_timestamp : f64,
     topology : GraphMap<usize, f64, Undirected>,
+    strategy : Box<dyn ConnectionStrategy>,
 }
 
 impl Simulation {
@@ -139,6 +142,7 @@ impl Simulation {
             connection_refresh_time,
             last_update_timestamp : 0.0,
             topology,
+            strategy : Box::new(GridStrat::new()),
         }
     }
 
@@ -151,6 +155,10 @@ impl Simulation {
     }
 
     pub fn update_connections(&mut self) {
+        //Updating the topology
+        self.topology = self.strategy.run(self);
+
+        //Validating the topology
         for sat in self.topology.nodes() {
             assert!(self.topology.edges(sat).count() <= self.satellites[sat].max_number_of_connections);
         }
@@ -161,6 +169,22 @@ impl Simulation {
             assert!(distance < &self.satellites[sat1].connection_max_range);
             assert!(distance < &self.satellites[sat2].connection_max_range);
         }
+    }
+
+    pub fn satellites(&self) -> &[Satellite] {
+        self.satellites.as_ref()
+    }
+    
+    pub fn t(&self) -> f64 {
+        self.t
+    }
+
+    pub fn topology(&self) -> &GraphMap<usize, f64, Undirected> {
+        &self.topology
+    }
+
+    pub fn orbital_planes(&self) -> &[Arc<OrbitalPlane>] {
+        self.orbital_planes.as_ref()
     }
 }
 

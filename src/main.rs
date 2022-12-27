@@ -6,6 +6,7 @@ use toml::Value;
 use model::{EARTH_RADIUS, Simulation, init_msg, update_msg};
 
 pub mod model;
+pub mod connection_strategy;
 
 fn main() -> thread::Result<()> {
     let args: Vec<String> = env::args().collect();

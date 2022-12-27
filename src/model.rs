@@ -1,9 +1,9 @@
-
 use std::{f64::consts::PI, sync::Arc};
 
 use json::{object, JsonValue};
 use nalgebra::{Vector3, Rotation3};
 use rand::prelude::*;
+use petgraph::{graphmap::GraphMap, Undirected};
 
 pub const GM: f64 = 3.986004418e14;
 pub const EARTH_RADIUS: f64 = 6.371e6;
@@ -87,6 +87,7 @@ pub struct Simulation {
     t: f64,
     connection_refresh_time : f64,
     last_update_timestamp : f64,
+    topology : GraphMap<usize, f64, Undirected>,
 }
 
 impl Simulation {
@@ -125,6 +126,11 @@ impl Simulation {
             orbital_planes.push(orbital_plane);
         }
 
+        let mut topology = GraphMap::new();
+        for sat in 0..satellites.len() {
+            topology.add_node(sat);
+        }
+
         Simulation {
             orbital_planes,
             satellites,
@@ -132,6 +138,7 @@ impl Simulation {
             t: 0.0,
             connection_refresh_time,
             last_update_timestamp : 0.0,
+            topology,
         }
     }
 
@@ -144,7 +151,16 @@ impl Simulation {
     }
 
     pub fn update_connections(&mut self) {
-        //TODO
+        for sat in self.topology.nodes() {
+            assert!(self.topology.edges(sat).count() <= self.satellites[sat].max_number_of_connections);
+        }
+
+        for (sat1, sat2, distance) in self.topology.all_edges() {
+            assert!(self.satellites[sat1].alive);
+            assert!(self.satellites[sat2].alive);
+            assert!(distance < &self.satellites[sat1].connection_max_range);
+            assert!(distance < &self.satellites[sat2].connection_max_range);
+        }
     }
 }
 

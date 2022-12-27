@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 json = "0.12.4"
 nalgebra = "0.31.4"
+petgraph = "0.6.2"
 rand = "0.8.5"
 toml = "0.5.10"
 tungstenite = "0.18.0"

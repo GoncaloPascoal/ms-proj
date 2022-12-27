@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=2]
+[gd_scene load_steps=10 format=2]
 
 [ext_resource path="res://simulation.gd" type="Script" id=1]
 [ext_resource path="res://earth.tscn" type="PackedScene" id=2]
@@ -6,6 +6,7 @@
 [ext_resource path="res://camera_gimbal.tscn" type="PackedScene" id=4]
 [ext_resource path="res://hud.tscn" type="PackedScene" id=5]
 [ext_resource path="res://space_env.tres" type="Environment" id=6]
+[ext_resource path="res://connection.tscn" type="PackedScene" id=7]
 
 [sub_resource type="CylinderMesh" id=1]
 top_radius = 1.15
@@ -24,6 +25,7 @@ emission_on_uv2 = false
 [node name="Root" type="Spatial"]
 script = ExtResource( 1 )
 satellite_scene = ExtResource( 3 )
+connection_scene = ExtResource( 7 )
 
 [node name="HUD" parent="." instance=ExtResource( 5 )]
 
@@ -35,6 +37,8 @@ environment = ExtResource( 6 )
 [node name="CameraGimbal" parent="." instance=ExtResource( 4 )]
 
 [node name="SatellitesRoot" type="Spatial" parent="."]
+
+[node name="ConnectionsRoot" type="Spatial" parent="."]
 
 [node name="OrbitalPlane" type="MeshInstance" parent="."]
 visible = false

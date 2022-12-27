@@ -8,13 +8,16 @@ const MAX_RAY_LENGTH := 1000.0
 
 export(String) var websocket_url = "ws://localhost:1234"
 export(PackedScene) var satellite_scene
+export(PackedScene) var connection_scene
 
 onready var hud: Control = $HUD
 onready var satellites_root: Spatial = $SatellitesRoot
+onready var connections_root: Spatial = $ConnectionsRoot
 onready var camera: Camera = $CameraGimbal/InnerGimbal/Camera
 onready var orbital_plane: MeshInstance = $OrbitalPlane
 
 var _orbital_planes: Dictionary
+var _connections := []
 var _inclination: float
 
 var _client := WebSocketClient.new()
@@ -75,7 +78,25 @@ func _update_simulation(json: Dictionary):
 		
 		satellite.reset_physics_interpolation()
 	
+	if json.has("connections"):
+		_update_connections(json["connections"])
+	
 	hud.update_hud(json)
+
+func _update_connections(connections: Array):
+	_connections = connections
+	
+	for child in connections_root.get_children():
+		child.queue_free()
+	
+	for connection in _connections:
+		var sat_a: KinematicBody = satellites_root.get_child(connection[0])
+		var sat_b: KinematicBody = satellites_root.get_child(connection[1])
+		
+		var instance: ImmediateGeometry = connection_scene.instance()
+		instance.sat_a = sat_a
+		instance.sat_b = sat_b
+		connections_root.add_child(instance)
 
 func _physics_process(_delta: float):
 	if Input.is_action_just_pressed("select"):

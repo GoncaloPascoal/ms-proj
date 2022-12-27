@@ -57,7 +57,7 @@ fn main() -> thread::Result<()> {
         max_connections      = constellation_parameters["max_connections"]     .as_integer().unwrap() as usize;
         connection_range     = constellation_parameters["connection_range"]    .as_float()  .unwrap();
 
-        time_step            = simulation_parameters["timestep"]               .as_float()  .unwrap();
+        time_step            = simulation_parameters["time_step"]               .as_float()  .unwrap();
 
         if simulation_parameters.contains_key("starting_failure_rate") {
             starting_failure_rate = simulation_parameters["starting_failure_rate"].as_float().unwrap();

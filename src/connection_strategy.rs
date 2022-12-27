@@ -10,7 +10,7 @@ fn add_adge(topology : &mut GraphMap<usize, f64, Undirected>, sim : &Simulation,
     topology.add_edge(a, b, length);
 }
 
-pub trait ConnectionStrategy {
+pub trait ConnectionStrategy: Send {
     fn run(&mut self, sim : &Simulation) -> GraphMap<usize, f64, Undirected>;
 }
 

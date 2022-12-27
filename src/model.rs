@@ -40,8 +40,6 @@ pub struct Satellite {
     orbital_plane: Arc<OrbitalPlane>,
     arg_periapsis: f64,
     alive: bool,
-    max_number_of_connections : usize,
-    connection_max_range : f64,
 }
 
 impl Satellite {
@@ -50,16 +48,12 @@ impl Satellite {
         orbital_plane: Arc<OrbitalPlane>, 
         arg_periapsis: f64, 
         alive: bool,
-        max_number_of_connections : usize,
-        connection_max_range : f64,
     ) -> Self {
         Satellite {
             id,
             orbital_plane,
             arg_periapsis,
             alive,
-            max_number_of_connections,
-            connection_max_range,
         }
     }
 
@@ -82,31 +76,23 @@ impl Satellite {
     }
 }
 
-pub struct Simulation {
+pub struct Model {
     orbital_planes: Vec<Arc<OrbitalPlane>>,
     satellites: Vec<Satellite>,
-    time_step: f64,
     t: f64,
-    connection_refresh_time : f64,
-    last_update_timestamp : f64,
-    topology : GraphMap<usize, f64, Undirected>,
-    strategy : Box<dyn ConnectionStrategy>,
+    max_connections: usize,
+    connection_range: f64,
 }
 
-impl Simulation {
+impl Model {
     pub fn new(
-        num_orbital_planes: usize, 
-        satellites_per_plane: usize, 
-        inclination: f64, 
-        semimajor_axis: f64, 
-        time_step: f64, 
-        starting_failure_rate : f64, 
-        n_connections : usize, 
-        connection_range : f64, 
-        connection_refresh_time : f64,
+        num_orbital_planes: usize,
+        satellites_per_plane: usize,
+        inclination: f64,
+        semimajor_axis: f64,
+        max_connections: usize,
+        connection_range: f64,
     ) -> Self {
-        let mut rng = rand::thread_rng();
-        
         let mut orbital_planes = Vec::with_capacity(num_orbital_planes);
         let mut satellites = Vec::with_capacity(num_orbital_planes * satellites_per_plane);
 
@@ -120,63 +106,108 @@ impl Simulation {
                     i * satellites_per_plane + j,
                     Arc::clone(&orbital_plane),
                     2.0 * PI * j as f64 / satellites_per_plane as f64,
-                    if rng.gen::<f64>() >= starting_failure_rate {true} else {false},
-                    n_connections,
-                    connection_range,
+                    true,
                 ));
             }
 
             orbital_planes.push(orbital_plane);
         }
 
+        Model {
+            orbital_planes,
+            satellites,
+            t: 0.0,
+            max_connections,
+            connection_range,
+        }
+    }
+
+    pub fn orbital_planes(&self) -> &[Arc<OrbitalPlane>] {
+        &self.orbital_planes
+    }
+
+    pub fn satellites(&self) -> &[Satellite] {
+        &self.satellites
+    }
+
+    pub fn t(&self) -> f64 {
+        self.t
+    }
+
+    pub fn increment_t(&mut self, time_step: f64) {
+        self.t += time_step;
+    }
+
+    pub fn max_connections(&self) -> usize {
+        self.max_connections
+    }
+
+    pub fn connection_range(&self) -> f64 {
+        self.connection_range
+    }
+}
+
+pub struct Simulation {
+    model: Model,
+    time_step: f64,
+    connection_refresh_time: f64,
+    last_update_timestamp: f64,
+    topology: GraphMap<usize, f64, Undirected>,
+    strategy: Box<dyn ConnectionStrategy>,
+}
+
+impl Simulation {
+    pub fn new(
+        model: Model,
+        time_step: f64,
+        starting_failure_rate: f64, 
+        connection_refresh_time: f64,
+    ) -> Self {
         let mut topology = GraphMap::new();
-        for sat in 0..satellites.len() {
+        for sat in 0..model.satellites().len() {
             topology.add_node(sat);
         }
 
         Simulation {
-            orbital_planes,
-            satellites,
+            model,
             time_step,
-            t: 0.0,
             connection_refresh_time,
-            last_update_timestamp : 0.0,
+            last_update_timestamp: 0.0,
             topology,
-            strategy : Box::new(GridStrat::new()),
+            strategy: Box::new(GridStrat::new()),
         }
     }
 
     pub fn step(&mut self) {
-        self.t += self.time_step;
-        if self.t > self.last_update_timestamp + self.connection_refresh_time {
+        self.model.increment_t(self.time_step);
+        if self.t() > self.last_update_timestamp + self.connection_refresh_time {
             self.last_update_timestamp += self.connection_refresh_time;
             self.update_connections()
         }
     }
 
     pub fn update_connections(&mut self) {
-        //Updating the topology
-        self.topology = self.strategy.run(self);
+        // Updating the topology
+        self.topology = self.strategy.run(&self.model);
 
-        //Validating the topology
+        // Validating the topology
         for sat in self.topology.nodes() {
-            assert!(self.topology.edges(sat).count() <= self.satellites[sat].max_number_of_connections);
+            assert!(self.topology.edges(sat).count() <= self.model.max_connections());
         }
 
         for (sat1, sat2, distance) in self.topology.all_edges() {
-            assert!(self.satellites[sat1].alive);
-            assert!(self.satellites[sat2].alive);
-            assert!(distance < &self.satellites[sat1].connection_max_range);
-            assert!(distance < &self.satellites[sat2].connection_max_range);
+            assert!(self.satellites()[sat1].alive);
+            assert!(self.satellites()[sat2].alive);
+            assert!(*distance < self.model.connection_range());
         }
     }
 
     pub fn satellites(&self) -> &[Satellite] {
-        self.satellites.as_ref()
+        self.model.satellites()
     }
     
     pub fn t(&self) -> f64 {
-        self.t
+        self.model.t()
     }
 
     pub fn topology(&self) -> &GraphMap<usize, f64, Undirected> {
@@ -184,25 +215,25 @@ impl Simulation {
     }
 
     pub fn orbital_planes(&self) -> &[Arc<OrbitalPlane>] {
-        self.orbital_planes.as_ref()
+        self.model.orbital_planes()
     }
 }
 
 pub fn init_msg(sim: &Simulation) -> String {
-    let first_plane = sim.orbital_planes.get(0);
+    let first_plane = sim.orbital_planes().get(0);
 
     let semimajor_axis = first_plane.map(|p| p.semimajor_axis).unwrap_or(0.0);
     let inclination = first_plane.map(|p| p.inclination).unwrap_or(0.0);
 
     let mut orbital_planes = JsonValue::new_object();
-    for plane in &sim.orbital_planes {
+    for plane in sim.orbital_planes() {
         orbital_planes[plane.id.to_string()] = object! {
             longitude: plane.longitude,
         }
     }
 
     let mut satellites = JsonValue::new_object();
-    for sat in &sim.satellites {
+    for sat in sim.satellites() {
         satellites[sat.id.to_string()] = object! {
             orbital_plane: sat.orbital_plane.id.to_string(),
             arg_periapsis: sat.arg_periapsis,
@@ -222,17 +253,17 @@ pub fn init_msg(sim: &Simulation) -> String {
 
 pub fn update_msg(sim: &Simulation) -> String {
     let mut satellites = JsonValue::new_object();
-    for sat in &sim.satellites {
+    for sat in sim.satellites() {
         satellites[sat.id.to_string()] = object! {
-            position: sat.calc_position(sim.t).as_slice(),
-            velocity: sat.calc_velocity(sim.t).as_slice(),
+            position: sat.calc_position(sim.t()).as_slice(),
+            velocity: sat.calc_velocity(sim.t()).as_slice(),
             alive: sat.alive,
         };
     }
 
     let obj = object! {
         msg_type: "update",
-        t: sim.t,
+        t: sim.t(),
         satellites: satellites,
     };
 

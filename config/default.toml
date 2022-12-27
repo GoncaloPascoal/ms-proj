@@ -1,14 +1,14 @@
 name = "default constellation"
 
-["constellation parameters"]
+[constellation]
 altitude = 0.55e6
-"number of orbital planes" = 10
-"satellites per plane" = 20
-"inclination" = 0.6
-"connections" = 4
-"connection range" = 1e10 # What's a good value for here? have to research
+number_of_orbital_planes = 10
+satellites_per_plane = 20
+inclination = 0.6
+max_connections = 4
+connection_range = 1e10 # What's a good value for here? have to research
 
-["simulation parameters"]
+[simulation]
 timestep = 1.0
-"starting failure rate" = 0.0
-"connection refresh time" = 10.0
+starting_failure_rate = 0.0
+connection_refresh_time = 10.0

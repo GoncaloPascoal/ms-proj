@@ -11,4 +11,4 @@ connection_range = 1e10 # What's a good value for here? have to research
 [simulation]
 time_step = 1.0
 starting_failure_rate = 0.0
-connection_refresh_time = 10.0
+connection_refresh_interval = 10.0

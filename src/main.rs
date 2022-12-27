@@ -20,7 +20,7 @@ fn main() -> thread::Result<()> {
 
     let time_step: f64;
     let starting_failure_rate: f64;
-    let connection_refresh_time: f64;
+    let connection_refresh_interval: f64;
 
     if args.len() == 1 {
         orbiting_altitude = 0.55e6;
@@ -32,7 +32,7 @@ fn main() -> thread::Result<()> {
 
         time_step = 1.0;
         starting_failure_rate = 0.0;
-        connection_refresh_time = 10.0;
+        connection_refresh_interval = 10.0;
     } else if args.len() == 2 {
         let path = Path::new(&args[1]);
         if !path.exists() {
@@ -57,7 +57,8 @@ fn main() -> thread::Result<()> {
         max_connections      = constellation_parameters["max_connections"]     .as_integer().unwrap() as usize;
         connection_range     = constellation_parameters["connection_range"]    .as_float()  .unwrap();
 
-        time_step            = simulation_parameters["time_step"]               .as_float()  .unwrap();
+        time_step                   = simulation_parameters["time_step"]                  .as_float().unwrap();
+        connection_refresh_interval = simulation_parameters["connection_refresh_interval"].as_float().unwrap();
 
         if simulation_parameters.contains_key("starting_failure_rate") {
             starting_failure_rate = simulation_parameters["starting_failure_rate"].as_float().unwrap();
@@ -65,7 +66,6 @@ fn main() -> thread::Result<()> {
         } else {
             starting_failure_rate = 0.0;
         }
-        connection_refresh_time = simulation_parameters["connection_refresh_time"].as_float().unwrap();
     } else {
         panic!("More than one argument!");
     }
@@ -81,7 +81,7 @@ fn main() -> thread::Result<()> {
         ),
         time_step,
         starting_failure_rate,
-        connection_refresh_time,
+        connection_refresh_interval,
     )));
 
     let sim_server = Arc::clone(&sim);

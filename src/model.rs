@@ -150,7 +150,7 @@ impl Model {
 pub struct Simulation {
     model: Model,
     time_step: f64,
-    connection_refresh_time: f64,
+    connection_refresh_interval: f64,
     last_update_timestamp: f64,
     topology: GraphMap<usize, f64, Undirected>,
     strategy: Box<dyn ConnectionStrategy>,
@@ -161,7 +161,7 @@ impl Simulation {
         model: Model,
         time_step: f64,
         starting_failure_rate: f64, 
-        connection_refresh_time: f64,
+        connection_refresh_interval: f64,
     ) -> Self {
         let mut topology = GraphMap::new();
         for sat in 0..model.satellites().len() {
@@ -171,7 +171,7 @@ impl Simulation {
         Simulation {
             model,
             time_step,
-            connection_refresh_time,
+            connection_refresh_interval,
             last_update_timestamp: 0.0,
             topology,
             strategy: Box::new(GridStrat::new()),
@@ -180,8 +180,8 @@ impl Simulation {
 
     pub fn step(&mut self) {
         self.model.increment_t(self.time_step);
-        if self.t() > self.last_update_timestamp + self.connection_refresh_time {
-            self.last_update_timestamp += self.connection_refresh_time;
+        if self.t() >= self.last_update_timestamp + self.connection_refresh_interval {
+            self.last_update_timestamp = self.t();
             self.update_connections()
         }
     }
@@ -261,14 +261,16 @@ pub fn update_msg(sim: &Simulation) -> String {
         };
     }
 
-    let connections: Vec<_> = sim.topology().all_edges().map(|(a, b, _)| vec![a, b]).collect();
-
-    let obj = object! {
+    let mut obj = object! {
         msg_type: "update",
         t: sim.t(),
         satellites: satellites,
-        connections: connections,
     };
+
+    if sim.last_update_timestamp == sim.t() {
+        let connections: Vec<_> = sim.topology().all_edges().map(|(a, b, _)| vec![a, b]).collect();
+        let _ = obj.insert("connections", connections);   
+    }
 
     obj.dump()
 }

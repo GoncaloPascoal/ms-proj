@@ -69,7 +69,7 @@ impl Satellite {
         position
     }
 
-    fn calc_velocity(&self, t: f64) -> Vector3<f64> {
+    pub fn calc_velocity(&self, t: f64) -> Vector3<f64> {
         let direction = Rotation3::from_euler_angles(0.0, PI / 2.0, 0.0) * self.calc_position(t).normalize();
 
         self.orbital_plane.orbital_speed * direction
@@ -256,7 +256,6 @@ pub fn update_msg(sim: &Simulation) -> String {
     for sat in sim.satellites() {
         satellites[sat.id.to_string()] = object! {
             position: sat.calc_position(sim.t()).as_slice(),
-            velocity: sat.calc_velocity(sim.t()).as_slice(),
             alive: sat.alive,
         };
     }
@@ -269,7 +268,7 @@ pub fn update_msg(sim: &Simulation) -> String {
 
     if sim.last_update_timestamp == sim.t() {
         let connections: Vec<_> = sim.topology().all_edges().map(|(a, b, _)| vec![a, b]).collect();
-        let _ = obj.insert("connections", connections);   
+        let _ = obj.insert("connections", connections);
     }
 
     obj.dump()

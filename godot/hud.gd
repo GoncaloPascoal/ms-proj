@@ -5,8 +5,9 @@ onready var time_step: Label = $SimulationInfo/TimeStep
 onready var satellite_info: Panel = $SatelliteInfo
 onready var selected_id: Label = $SatelliteInfo/ID
 onready var selected_position: Label = $SatelliteInfo/Position
-onready var selected_velocity: Label = $SatelliteInfo/Velocity
 onready var selected_connections: Label = $SatelliteInfo/Connections
+
+onready var fps: Label = $MiscInfo/FPS
 
 var _selected_satellite: KinematicBody
 var _connections := []
@@ -19,9 +20,10 @@ func init_hud(json: Dictionary):
 	$SimulationInfo/Satellites.text = "Satellites: " + str(len(json["satellites"]))
 
 func _process(_delta: float):
+	fps.text = "FPS: " + str(Engine.get_frames_per_second())
+	
 	if _selected_satellite:
 		selected_position.text = "Position: " + str(_selected_satellite.global_translation)
-		selected_velocity.text = "Velocity: " + str(_selected_satellite.velocity)
 
 func _is_selected_connection(connection: Array) -> bool:
 	return _selected_satellite.id in connection

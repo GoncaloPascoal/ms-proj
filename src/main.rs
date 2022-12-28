@@ -1,6 +1,5 @@
 
-use std::{fs, env, path::Path, net::TcpListener, sync::Arc, sync::Mutex, thread, time::Duration};
-use tungstenite::{Message, accept};
+use std::{fs, env, path::Path, net::{TcpListener, TcpStream}, sync::Arc, sync::Mutex, thread, time::Duration, io::Write};
 use toml::Value;
 
 use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, Model};
@@ -109,24 +108,31 @@ fn simulation_thread(sim: Arc<Mutex<Simulation>>, simulation_steps: usize, delay
 
 fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay_ms: u64) -> std::io::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:1234").unwrap();
+    let mut msg;
+
+    let write = |stream: &mut TcpStream, msg: String| {
+        let bytes = msg.as_bytes();
+        stream.write(&(bytes.len() as u32).to_ne_bytes()).unwrap();
+        stream.write_all(bytes).unwrap();
+    };
 
     for stream in listener.incoming() {
-        let mut websocket = accept(stream?).unwrap();
+        let mut stream = stream?;
 
         {
             let lock = sim.lock().unwrap();
-            websocket.write_message(Message::Text(init_msg(&lock))).unwrap();
+            msg = init_msg(&lock);
         }
+        write(&mut stream, msg);
 
         for _ in 0..communication_steps {
             thread::sleep(Duration::from_millis(delay_ms));
             {
                 let lock = sim.lock().unwrap();
-                websocket.write_message(Message::Text(update_msg(&lock))).unwrap();
+                msg = update_msg(&lock);
             }
+            write(&mut stream, msg);
         }
-
-        break;
     }
 
     Ok(())

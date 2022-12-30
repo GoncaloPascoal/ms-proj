@@ -31,7 +31,7 @@ fn main() -> thread::Result<()> {
         max_connections = 4;
         connection_range = 1e10;
 
-        simulation_speed = 1.0;
+        simulation_speed = 10.0;
         update_frequency = 10.0;
         update_frequency_server = update_frequency;
         starting_failure_rate = 0.0;

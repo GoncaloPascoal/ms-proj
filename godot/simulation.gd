@@ -22,10 +22,12 @@ var _inclination: float
 
 var _tcp := StreamPeerTCP.new()
 
+var _visible_connections := true
 var _selected_satellite: KinematicBody
 
 func _ready():
 	connect("satellite_selected", hud, "on_satellite_selected")
+	hud.connect("connection_visibility_changed", self, "_on_connection_visibility_changed")
 	
 	$Earth.scale = EARTH_RADIUS * SCALE * Vector3.ONE
 	
@@ -46,8 +48,8 @@ func _init_simulation(json: Dictionary):
 	_inclination = json["inclination"]
 	
 	var r = semimajor_axis * SCALE
-	orbital_plane.mesh.top_radius = r * 0.995
-	orbital_plane.mesh.bottom_radius = r * 0.995
+	orbital_plane.mesh.top_radius = r * 0.99
+	orbital_plane.mesh.bottom_radius = r * 0.99
 	orbital_plane.mesh.height = r * 0.003
 	orbital_plane.rotation.x = _inclination
 	
@@ -98,31 +100,19 @@ func _update_connections(connections: Array):
 		instance.sat_b = sat_b
 		instance.set_selected(_selected_satellite == sat_a or _selected_satellite == sat_b)
 		
+		if _visible_connections:
+			instance.set_active(true)
+		
 		if new:
 			connections_root.add_child(instance)
 		else:
-			instance.set_process(true)
-			instance.show()
+			instance.valid = true
 	
 	for i in range(n_connections, connections_root.get_child_count()):
 		var node: ImmediateGeometry = connections_root.get_child(i)
-		node.set_process(false)
-		node.hide()
+		node.valid = false
 
 func _physics_process(_delta: float):
-	if Input.is_action_just_pressed("select"):
-		var mouse_pos := get_viewport().get_mouse_position()
-		var from := camera.project_ray_origin(mouse_pos)
-		var to := camera.project_ray_normal(mouse_pos) * MAX_RAY_LENGTH
-		
-		var ray_result := get_world().direct_space_state.intersect_ray(from, to, [self])
-		
-		if ray_result and ray_result.collider.get_collision_layer_bit(0):
-			# Ray collided with a satellite
-			_select_satellite(ray_result.collider)
-		else:
-			_select_satellite(null)
-	
 	if _tcp.get_status() == StreamPeerTCP.STATUS_CONNECTED:
 		var bytes = _tcp.get_available_bytes()
 		if bytes > 0:
@@ -136,6 +126,20 @@ func _physics_process(_delta: float):
 						"update": _update_simulation(result)
 			else:
 				print(json.error_string)
+
+func _unhandled_input(event: InputEvent):
+	if event.is_action_pressed("select"):
+		var mouse_pos := get_viewport().get_mouse_position()
+		var from := camera.project_ray_origin(mouse_pos)
+		var to := camera.project_ray_normal(mouse_pos) * MAX_RAY_LENGTH
+		
+		var ray_result := get_world().direct_space_state.intersect_ray(from, to, [self])
+		
+		if ray_result and ray_result.collider.get_collision_layer_bit(0):
+			# Ray collided with a satellite
+			_select_satellite(ray_result.collider)
+		else:
+			_select_satellite(null)
 
 func _select_satellite(satellite: KinematicBody):
 	if _selected_satellite:
@@ -152,3 +156,9 @@ func _select_satellite(satellite: KinematicBody):
 		orbital_plane.visible = false
 	
 	emit_signal("satellite_selected", _selected_satellite)
+
+func _on_connection_visibility_changed(value: bool):
+	_visible_connections = value
+	for node in connections_root.get_children():
+		if node.valid:
+			node.set_active(_visible_connections)

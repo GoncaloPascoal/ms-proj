@@ -37,8 +37,8 @@ valign = 1
 
 [node name="SatelliteInfo" type="Panel" parent="."]
 margin_top = 108.0
-margin_right = 384.0
-margin_bottom = 236.0
+margin_right = 364.0
+margin_bottom = 234.0
 
 [node name="Title" type="Label" parent="SatelliteInfo"]
 margin_left = 12.0
@@ -65,10 +65,24 @@ margin_bottom = 84.0
 text = "Position: 0"
 valign = 1
 
-[node name="Velocity" type="Label" parent="SatelliteInfo"]
+[node name="Connections" type="Label" parent="SatelliteInfo"]
 margin_left = 12.0
 margin_top = 96.0
 margin_right = 176.0
 margin_bottom = 112.0
-text = "Velocity: 0"
+text = "Connections:"
+valign = 1
+
+[node name="MiscInfo" type="Panel" parent="."]
+anchor_left = 1.0
+anchor_right = 1.0
+margin_left = -96.0
+margin_bottom = 40.0
+
+[node name="FPS" type="Label" parent="MiscInfo"]
+margin_left = 12.0
+margin_top = 12.0
+margin_right = 84.0
+margin_bottom = 28.0
+text = "FPS: 0"
 valign = 1

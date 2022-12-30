@@ -8,16 +8,19 @@ const MAX_RAY_LENGTH := 1000.0
 
 export(String) var websocket_url = "ws://localhost:1234"
 export(PackedScene) var satellite_scene
+export(PackedScene) var connection_scene
 
 onready var hud: Control = $HUD
 onready var satellites_root: Spatial = $SatellitesRoot
+onready var connections_root: Spatial = $ConnectionsRoot
 onready var camera: Camera = $CameraGimbal/InnerGimbal/Camera
 onready var orbital_plane: MeshInstance = $OrbitalPlane
 
 var _orbital_planes: Dictionary
+var _connections := []
 var _inclination: float
 
-var _client := WebSocketClient.new()
+var _tcp := StreamPeerTCP.new()
 
 var _selected_satellite: KinematicBody
 
@@ -26,13 +29,11 @@ func _ready():
 	
 	$Earth.scale = EARTH_RADIUS * SCALE * Vector3.ONE
 	
-	_client.connect("connection_established", self, "_connected")
-	_client.connect("data_received", self, "_on_data")
-	
-	var err := _client.connect_to_url(websocket_url)
-	if err != OK:
+	if _tcp.connect_to_host("127.0.0.1", 1234) != OK:
 		print("Unable to connect to host.")
 		set_physics_process(false)
+	else:
+		print("Connected to host!")
 
 func array_to_vector3(arr: Array) -> Vector3:
 	return Vector3(arr[0], arr[1], arr[2])
@@ -68,14 +69,31 @@ func _update_simulation(json: Dictionary):
 		var satellite = satellites_root.get_child(int(id))
 		
 		var position = array_to_vector3(data["position"]) * SCALE
-		var velocity = array_to_vector3(data["velocity"]) * SCALE
-		
 		satellite.global_translation = position
-		satellite.velocity = velocity
-		
-		satellite.reset_physics_interpolation()
+	
+	if json.has("connections"):
+		_update_connections(json["connections"])
 	
 	hud.update_hud(json)
+
+func _update_connections(connections: Array):
+	_connections = connections
+	
+	for child in connections_root.get_children():
+		child.queue_free()
+	
+	for connection in _connections:
+		var sat_a: KinematicBody = satellites_root.get_child(connection[0])
+		var sat_b: KinematicBody = satellites_root.get_child(connection[1])
+		
+		var instance: ImmediateGeometry = connection_scene.instance()
+		instance.sat_a = sat_a
+		instance.sat_b = sat_b
+		instance.set_selected(_selected_satellite == sat_a or _selected_satellite == sat_b)
+		
+		connect("satellite_selected", instance, "on_satellite_selected")
+		
+		connections_root.add_child(instance)
 
 func _physics_process(_delta: float):
 	if Input.is_action_just_pressed("select"):
@@ -91,7 +109,19 @@ func _physics_process(_delta: float):
 		else:
 			_select_satellite(null)
 	
-	_client.poll()
+	if _tcp.get_status() == StreamPeerTCP.STATUS_CONNECTED:
+		var bytes = _tcp.get_available_bytes()
+		if bytes > 0:
+			var data := _tcp.get_utf8_string()
+			var json := JSON.parse(data)
+			if json.error == OK:
+				var result = json.result
+				if result is Dictionary:
+					match result["msg_type"]:
+						"init": _init_simulation(result)
+						"update": _update_simulation(result)
+			else:
+				print(json.error_string)
 
 func _select_satellite(satellite: KinematicBody):
 	if _selected_satellite:
@@ -108,17 +138,3 @@ func _select_satellite(satellite: KinematicBody):
 		orbital_plane.visible = false
 	
 	emit_signal("satellite_selected", _selected_satellite)
-
-func _connected(_proto: String = ""):
-	print("Connected to host!")
-
-func _on_data():
-	var json := JSON.parse(_client.get_peer(1).get_packet().get_string_from_utf8())
-	
-	if json.error == OK:
-		var result = json.result
-		
-		if result is Dictionary:
-			match result["msg_type"]:
-				"init": _init_simulation(result)
-				"update": _update_simulation(result)

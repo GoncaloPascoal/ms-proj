@@ -2,12 +2,12 @@
 
 importer="scene"
 type="PackedScene"
-path="res://.import/earth.glb-26dd0c382a12c18ca5abd8e9a273d510.scn"
+path="res://.import/simple_satellite.glb-adfc17b34da6b86eec438e7c06f79616.scn"
 
 [deps]
 
-source_file="res://models/earth.glb"
-dest_files=[ "res://.import/earth.glb-26dd0c382a12c18ca5abd8e9a273d510.scn" ]
+source_file="res://models/simple_satellite.glb"
+dest_files=[ "res://.import/simple_satellite.glb-adfc17b34da6b86eec438e7c06f79616.scn" ]
 
 [params]
 

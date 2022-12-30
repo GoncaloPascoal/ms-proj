@@ -2,7 +2,7 @@ name = "default constellation"
 
 [constellation]
 altitude = 0.55e6
-number_of_orbital_planes = 10
+num_orbital_planes = 10
 satellites_per_plane = 20
 inclination = 0.6
 max_connections = 4

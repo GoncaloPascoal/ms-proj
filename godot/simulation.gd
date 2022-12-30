@@ -46,9 +46,9 @@ func _init_simulation(json: Dictionary):
 	_inclination = json["inclination"]
 	
 	var r = semimajor_axis * SCALE
-	orbital_plane.mesh.top_radius = r
-	orbital_plane.mesh.bottom_radius = r
-	orbital_plane.mesh.height = r * 0.005
+	orbital_plane.mesh.top_radius = r * 0.995
+	orbital_plane.mesh.bottom_radius = r * 0.995
+	orbital_plane.mesh.height = r * 0.003
 	orbital_plane.rotation.x = _inclination
 	
 	for id in satellites:
@@ -78,22 +78,36 @@ func _update_simulation(json: Dictionary):
 
 func _update_connections(connections: Array):
 	_connections = connections
+	var n_connections = len(connections)
 	
-	for child in connections_root.get_children():
-		child.queue_free()
-	
-	for connection in _connections:
+	for i in n_connections:
+		var connection = _connections[i]
+		var instance: ImmediateGeometry
+		var new: bool = i >= connections_root.get_child_count()
+		
+		if new:
+			instance = connection_scene.instance()
+			connect("satellite_selected", instance, "on_satellite_selected")
+		else:
+			instance = connections_root.get_child(i)
+		
 		var sat_a: KinematicBody = satellites_root.get_child(connection[0])
 		var sat_b: KinematicBody = satellites_root.get_child(connection[1])
 		
-		var instance: ImmediateGeometry = connection_scene.instance()
 		instance.sat_a = sat_a
 		instance.sat_b = sat_b
 		instance.set_selected(_selected_satellite == sat_a or _selected_satellite == sat_b)
 		
-		connect("satellite_selected", instance, "on_satellite_selected")
-		
-		connections_root.add_child(instance)
+		if new:
+			connections_root.add_child(instance)
+		else:
+			instance.set_process(true)
+			instance.show()
+	
+	for i in range(n_connections, connections_root.get_child_count()):
+		var node: ImmediateGeometry = connections_root.get_child(i)
+		node.set_process(false)
+		node.hide()
 
 func _physics_process(_delta: float):
 	if Input.is_action_just_pressed("select"):

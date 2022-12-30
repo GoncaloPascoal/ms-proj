@@ -9,5 +9,6 @@ max_connections = 4
 connection_range = 1e10
 
 [simulation]
-time_step = 1.0
+update_frequency = 10.0
+simulation_speed = 5.0
 connection_refresh_interval = 10.0

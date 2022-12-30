@@ -17,7 +17,9 @@ fn main() -> thread::Result<()> {
     let max_connections: usize;
     let connection_range: f64;
 
-    let time_step: f64;
+    let simulation_speed: f64;
+    let update_frequency: f64;
+    let update_frequency_server: f64;
     let starting_failure_rate: f64;
     let connection_refresh_interval: f64;
 
@@ -29,13 +31,15 @@ fn main() -> thread::Result<()> {
         max_connections = 4;
         connection_range = 1e10;
 
-        time_step = 1.0;
+        simulation_speed = 1.0;
+        update_frequency = 10.0;
+        update_frequency_server = update_frequency;
         starting_failure_rate = 0.0;
         connection_refresh_interval = 10.0;
     } else if args.len() == 2 {
         let path = Path::new(&args[1]);
         if !path.exists() {
-            panic!("Path doesn't exist!")
+            panic!("Specified path does not exist!")
         }
         let contents = fs::read_to_string(path).unwrap().parse::<Value>().unwrap();
 
@@ -56,15 +60,12 @@ fn main() -> thread::Result<()> {
         max_connections      = constellation_parameters["max_connections"]     .as_integer().unwrap() as usize;
         connection_range     = constellation_parameters["connection_range"]    .as_float()  .unwrap();
 
-        time_step                   = simulation_parameters["time_step"]                  .as_float().unwrap();
+        simulation_speed            = simulation_parameters["simulation_speed"]           .as_float().unwrap_or(1.0);
+        update_frequency            = simulation_parameters["update_frequency"]           .as_float().unwrap_or(10.0);
+        update_frequency_server     = simulation_parameters["update_frequency_server"]    .as_float().unwrap_or(update_frequency);
         connection_refresh_interval = simulation_parameters["connection_refresh_interval"].as_float().unwrap();
-
-        if simulation_parameters.contains_key("starting_failure_rate") {
-            starting_failure_rate = simulation_parameters["starting_failure_rate"].as_float().unwrap();
-            assert!(0.0 <= starting_failure_rate && starting_failure_rate <= 1.0);
-        } else {
-            starting_failure_rate = 0.0;
-        }
+        starting_failure_rate       = simulation_parameters["starting_failure_rate"]      .as_float().unwrap_or(0.0);
+        assert!(0.0 <= starting_failure_rate && starting_failure_rate <= 1.0);
     } else {
         panic!("More than one argument!");
     }
@@ -78,7 +79,7 @@ fn main() -> thread::Result<()> {
             max_connections,
             connection_range,
         ),
-        time_step,
+        simulation_speed / update_frequency,
         starting_failure_rate,
         connection_refresh_interval,
     )));
@@ -86,9 +87,11 @@ fn main() -> thread::Result<()> {
     let sim_server = Arc::clone(&sim);
 
     let steps = 10000;
+    let delay = Duration::from_secs_f64(1.0 / update_frequency);
+    let delay_server = Duration::from_secs_f64(1.0 / update_frequency_server);
 
-    let simulation_handle = thread::spawn(move || { simulation_thread(sim, steps, 100) });
-    let server_handle = thread::spawn(move || { server_thread(sim_server, steps, 100) });
+    let simulation_handle = thread::spawn(move || { simulation_thread(sim, steps, delay) });
+    let server_handle = thread::spawn(move || { server_thread(sim_server, steps, delay_server) });
 
     simulation_handle.join().expect("Couldn't join simulation thread.");
     let _ = server_handle.join().expect("Couldn't join server thread.");
@@ -96,9 +99,9 @@ fn main() -> thread::Result<()> {
     Ok(())
 }
 
-fn simulation_thread(sim: Arc<Mutex<Simulation>>, simulation_steps: usize, delay_ms: u64) {
+fn simulation_thread(sim: Arc<Mutex<Simulation>>, simulation_steps: usize, delay: Duration) {
     for _ in 0..simulation_steps {
-        thread::sleep(Duration::from_millis(delay_ms));
+        thread::sleep(delay);
         {
             let mut lock = sim.lock().unwrap();
             lock.step();
@@ -106,7 +109,7 @@ fn simulation_thread(sim: Arc<Mutex<Simulation>>, simulation_steps: usize, delay
     }
 }
 
-fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay_ms: u64) -> std::io::Result<()> {
+fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay: Duration) -> std::io::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:1234").unwrap();
     let mut msg;
 
@@ -126,7 +129,7 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay_
         write(&mut stream, msg);
 
         for _ in 0..communication_steps {
-            thread::sleep(Duration::from_millis(delay_ms));
+            thread::sleep(delay);
             {
                 let lock = sim.lock().unwrap();
                 msg = update_msg(&lock);

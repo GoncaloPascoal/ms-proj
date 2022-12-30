@@ -205,7 +205,7 @@ impl Simulation {
     pub fn satellites(&self) -> &[Satellite] {
         self.model.satellites()
     }
-    
+
     pub fn t(&self) -> f64 {
         self.model.t()
     }

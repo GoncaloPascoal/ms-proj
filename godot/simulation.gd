@@ -12,7 +12,7 @@ export(PackedScene) var connection_scene
 
 onready var hud: Control = $HUD
 onready var camera: Camera = $CameraGimbal/InnerGimbal/Camera
-onready var earth: Area2D = $Earth
+onready var earth: Area = $Earth
 onready var satellites_root: Spatial = $SatellitesRoot
 onready var connections_root: Spatial = $ConnectionsRoot
 onready var orbital_plane: MeshInstance = $OrbitalPlane

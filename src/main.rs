@@ -2,7 +2,7 @@
 use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{Write, self}};
 use toml::Value;
 
-use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, Model};
+use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, statistics_msg, Model};
 
 pub mod model;
 pub mod connection_strategy;
@@ -96,8 +96,8 @@ fn main() -> thread::Result<()> {
     let server_steps = (steps as f64 * update_frequency_server / update_frequency) as usize;
 
     let simulation_handle = thread::spawn(move || { simulation_thread(sim, steps, delay) });
-    let server_handle     = thread::spawn(move || { server_thread(sim_server    , server_steps, delay_server, SERVER_PORT) });
-    let statistics_handle = thread::spawn(move || { server_thread(sim_statistics, server_steps, delay_server, STATISTICS_PORT) });
+    let server_handle = thread::spawn(move || { server_thread(sim_server, server_steps, delay_server) });
+    let statistics_handle = thread::spawn(move || { statistics_thread(sim_statistics, server_steps, delay_server) });
 
             simulation_handle.join().expect("Couldn't join simulation thread.");
     let _ = server_handle    .join().expect("Couldn't join visualization server thread.");
@@ -116,16 +116,16 @@ fn simulation_thread(sim: Arc<Mutex<Simulation>>, simulation_steps: usize, delay
     }
 }
 
-fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay: Duration, port: u16) -> io::Result<()> {
-    let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
+fn write(stream: &mut TcpStream, msg: String) {
+    let bytes = msg.as_bytes();
+    stream.write(&(bytes.len() as u32).to_ne_bytes()).unwrap();
+    stream.write_all(bytes).unwrap();
+}
+
+fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay: Duration) -> io::Result<()> {
+    let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, SERVER_PORT);
     let listener = TcpListener::bind(addr).unwrap();
     let mut msg;
-
-    let write = |stream: &mut TcpStream, msg: String| {
-        let bytes = msg.as_bytes();
-        stream.write(&(bytes.len() as u32).to_ne_bytes()).unwrap();
-        stream.write_all(bytes).unwrap();
-    };
 
     for stream in listener.incoming() {
         let mut stream = stream?;
@@ -141,6 +141,27 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
             {
                 let lock = sim.lock().unwrap();
                 msg = update_msg(&lock);
+            }
+            write(&mut stream, msg);
+        }
+    }
+
+    Ok(())
+}
+
+fn statistics_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay: Duration) -> io::Result<()> {
+    let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, STATISTICS_PORT);
+    let listener = TcpListener::bind(addr).unwrap();
+    let mut msg;
+
+    for stream in listener.incoming() {
+        let mut stream = stream?;
+
+        for _ in 0..communication_steps {
+            thread::sleep(delay);
+            {
+                let lock = sim.lock().unwrap();
+                msg = statistics_msg(&lock);
             }
             write(&mut stream, msg);
         }

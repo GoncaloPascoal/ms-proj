@@ -273,3 +273,11 @@ pub fn update_msg(sim: &Simulation) -> String {
 
     obj.dump()
 }
+
+pub fn statistics_msg(sim: &Simulation) -> String {
+    let obj = object! {
+        t: sim.t(),
+    };
+
+    obj.dump()
+}

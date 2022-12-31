@@ -1,11 +1,14 @@
 
-use std::{fs, env, path::Path, net::{TcpListener, TcpStream}, sync::Arc, sync::Mutex, thread, time::Duration, io::Write};
+use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{Write, self}};
 use toml::Value;
 
 use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, Model};
 
 pub mod model;
 pub mod connection_strategy;
+
+const SERVER_PORT: u16 = 2000;
+const STATISTICS_PORT: u16 = 2001;
 
 fn main() -> thread::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -109,8 +112,9 @@ fn simulation_thread(sim: Arc<Mutex<Simulation>>, simulation_steps: usize, delay
     }
 }
 
-fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay: Duration) -> std::io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:1234").unwrap();
+fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay: Duration) -> io::Result<()> {
+    let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, SERVER_PORT);
+    let listener = TcpListener::bind(addr).unwrap();
     let mut msg;
 
     let write = |stream: &mut TcpStream, msg: String| {
@@ -136,6 +140,17 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
             }
             write(&mut stream, msg);
         }
+    }
+
+    Ok(())
+}
+
+fn statistics_thread(sim: Arc<Mutex<Simulation>>, delay: Duration) -> io::Result<()> {
+    let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, STATISTICS_PORT);
+    let listener = TcpListener::bind(addr)?;
+
+    for stream in listener.incoming() {
+        let mut stream = stream?;
     }
 
     Ok(())

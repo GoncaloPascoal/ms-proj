@@ -5,7 +5,7 @@ use nalgebra::{Vector3, Rotation3};
 use rand::prelude::*;
 use petgraph::{graphmap::GraphMap, Undirected};
 
-use crate::connection_strategy::{ConnectionStrategy, GridStrat};
+use crate::connection_strategy::{ConnectionStrategy, GridStrategy};
 
 pub const GM: f64 = 3.986004418e14;
 pub const EARTH_RADIUS: f64 = 6.371e6;
@@ -174,7 +174,7 @@ impl Simulation {
             connection_refresh_interval,
             last_update_timestamp: 0.0,
             topology,
-            strategy: Box::new(GridStrat::new()),
+            strategy: Box::new(GridStrategy::new()),
         }
     }
 

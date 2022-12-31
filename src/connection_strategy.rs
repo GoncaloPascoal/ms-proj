@@ -14,15 +14,15 @@ pub trait ConnectionStrategy: Send {
     fn run(&mut self, model: &Model) -> GraphMap<usize, f64, Undirected>;
 }
 
-pub struct GridStrat;
+pub struct GridStrategy;
 
-impl GridStrat {
+impl GridStrategy {
     pub fn new() -> Self {
-        GridStrat
+        GridStrategy
     }
 }
 
-impl ConnectionStrategy for GridStrat {
+impl ConnectionStrategy for GridStrategy {
     fn run(&mut self, model: &Model) -> GraphMap<usize, f64, Undirected> {
         let mut topology = GraphMap::new();
         for sat in 0..model.satellites().len() {

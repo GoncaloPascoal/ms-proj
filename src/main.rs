@@ -83,6 +83,7 @@ fn main() -> thread::Result<()> {
             connection_range,
         ),
         simulation_speed / update_frequency,
+        simulation_speed,
         starting_failure_rate,
         connection_refresh_interval,
     )));

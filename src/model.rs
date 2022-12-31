@@ -150,6 +150,7 @@ impl Model {
 pub struct Simulation {
     model: Model,
     time_step: f64,
+    simulation_speed: f64,
     connection_refresh_interval: f64,
     last_update_timestamp: f64,
     topology: GraphMap<usize, f64, Undirected>,
@@ -160,6 +161,7 @@ impl Simulation {
     pub fn new(
         model: Model,
         time_step: f64,
+        simulation_speed: f64,
         starting_failure_rate: f64, 
         connection_refresh_interval: f64,
     ) -> Self {
@@ -171,6 +173,7 @@ impl Simulation {
         Simulation {
             model,
             time_step,
+            simulation_speed,
             connection_refresh_interval,
             last_update_timestamp: 0.0,
             topology,
@@ -200,6 +203,10 @@ impl Simulation {
             assert!(self.satellites()[sat2].alive);
             assert!(*distance < self.model.connection_range());
         }
+    }
+
+    pub fn simulation_speed(&self) -> f64 {
+        self.simulation_speed
     }
 
     pub fn satellites(&self) -> &[Satellite] {
@@ -244,6 +251,7 @@ pub fn init_msg(sim: &Simulation) -> String {
         msg_type: "init",
         semimajor_axis: semimajor_axis,
         inclination: inclination,
+        simulation_speed: sim.simulation_speed(),
         orbital_planes: orbital_planes,
         satellites: satellites,
     };

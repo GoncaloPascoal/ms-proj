@@ -1,8 +1,7 @@
 use std::{f64::consts::PI, sync::Arc};
 
 use json::{object, JsonValue};
-use nalgebra::{Vector3, Rotation3};
-use rand::prelude::*;
+use nalgebra::{Rotation3, Vector3};
 use petgraph::{graphmap::GraphMap, Undirected};
 
 use crate::connection_strategy::{ConnectionStrategy, GridStrategy};
@@ -270,14 +269,6 @@ pub fn update_msg(sim: &Simulation) -> String {
         let connections: Vec<_> = sim.topology().all_edges().map(|(a, b, _)| vec![a, b]).collect();
         let _ = obj.insert("connections", connections);
     }
-
-    obj.dump()
-}
-
-pub fn statistics_msg(sim: &Simulation) -> String {
-    let obj = object! {
-        t: sim.t(),
-    };
 
     obj.dump()
 }

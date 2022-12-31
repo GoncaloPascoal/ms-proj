@@ -2,10 +2,12 @@
 use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{Write, self}};
 use toml::Value;
 
-use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, statistics_msg, Model};
+use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, Model};
+use statistics::statistics_msg;
 
 pub mod model;
 pub mod connection_strategy;
+pub mod statistics;
 
 const SERVER_PORT: u16 = 2000;
 const STATISTICS_PORT: u16 = 2001;

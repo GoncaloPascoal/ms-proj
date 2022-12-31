@@ -89,16 +89,20 @@ fn main() -> thread::Result<()> {
     )));
 
     let sim_server = Arc::clone(&sim);
+    let sim_statistics = Arc::clone(&sim);
 
     let steps = 10000;
     let delay = Duration::from_secs_f64(1.0 / update_frequency);
     let delay_server = Duration::from_secs_f64(1.0 / update_frequency_server);
+    let server_steps = (steps as f64 * update_frequency_server / update_frequency) as usize;
 
     let simulation_handle = thread::spawn(move || { simulation_thread(sim, steps, delay) });
-    let server_handle = thread::spawn(move || { server_thread(sim_server, steps, delay_server) });
+    let server_handle     = thread::spawn(move || { server_thread(sim_server    , server_steps, delay_server, SERVER_PORT) });
+    let statistics_handle = thread::spawn(move || { server_thread(sim_statistics, server_steps, delay_server, STATISTICS_PORT) });
 
-    simulation_handle.join().expect("Couldn't join simulation thread.");
-    let _ = server_handle.join().expect("Couldn't join server thread.");
+            simulation_handle.join().expect("Couldn't join simulation thread.");
+    let _ = server_handle    .join().expect("Couldn't join visualization server thread.");
+    let _ = statistics_handle.join().expect("Couldn't join statistics server thread.");
 
     Ok(())
 }
@@ -113,8 +117,8 @@ fn simulation_thread(sim: Arc<Mutex<Simulation>>, simulation_steps: usize, delay
     }
 }
 
-fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay: Duration) -> io::Result<()> {
-    let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, SERVER_PORT);
+fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay: Duration, port: u16) -> io::Result<()> {
+    let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
     let listener = TcpListener::bind(addr).unwrap();
     let mut msg;
 
@@ -141,17 +145,6 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
             }
             write(&mut stream, msg);
         }
-    }
-
-    Ok(())
-}
-
-fn statistics_thread(sim: Arc<Mutex<Simulation>>, delay: Duration) -> io::Result<()> {
-    let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, STATISTICS_PORT);
-    let listener = TcpListener::bind(addr)?;
-
-    for stream in listener.incoming() {
-        let mut stream = stream?;
     }
 
     Ok(())

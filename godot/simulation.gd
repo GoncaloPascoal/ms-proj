@@ -5,6 +5,7 @@ signal satellite_selected(satellite)
 const EARTH_RADIUS := 6.371e6
 const SCALE := 2e-6
 const MAX_RAY_LENGTH := 1000.0
+const PORT := 2000
 
 export(String) var websocket_url = "ws://localhost:1234"
 export(PackedScene) var satellite_scene
@@ -32,7 +33,7 @@ func _ready():
 	
 	$Earth.scale = EARTH_RADIUS * SCALE * Vector3.ONE
 	
-	if _tcp.connect_to_host("127.0.0.1", 1234) != OK:
+	if _tcp.connect_to_host("127.0.0.1", PORT) != OK:
 		print("Unable to connect to host.")
 		set_physics_process(false)
 	else:

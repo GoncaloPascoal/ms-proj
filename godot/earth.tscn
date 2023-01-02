@@ -1,18 +1,19 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=5 format=2]
 
 [ext_resource path="res://models/earth.glb" type="PackedScene" id=1]
+[ext_resource path="res://earth.gd" type="Script" id=2]
 
 [sub_resource type="SphereShape" id=1]
 
 [sub_resource type="OccluderShapeSphere" id=2]
-spheres = [ Plane( 0, 0, 0, 0.96 ) ]
 
 [node name="Earth" type="Area"]
 collision_layer = 2
 collision_mask = 0
+script = ExtResource( 2 )
 
-[node name="Model" parent="." instance=ExtResource( 1 )]
-transform = Transform( 0.936672, 0.350207, 0, -0.350207, 0.936672, 0, 0, 0, 1, 0, 0, 0 )
+[node name="Mesh" parent="." instance=ExtResource( 1 )]
+transform = Transform( 0.01, 0, 0, 0, 0.01, 0, 0, 0, 0.01, 0, 0, 0 )
 
 [node name="CollisionShape" type="CollisionShape" parent="."]
 shape = SubResource( 1 )

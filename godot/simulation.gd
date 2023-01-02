@@ -12,9 +12,10 @@ export(PackedScene) var satellite_scene
 export(PackedScene) var connection_scene
 
 onready var hud: Control = $HUD
+onready var camera: Camera = $CameraGimbal/InnerGimbal/Camera
+onready var earth: Area = $Earth
 onready var satellites_root: Spatial = $SatellitesRoot
 onready var connections_root: Spatial = $ConnectionsRoot
-onready var camera: Camera = $CameraGimbal/InnerGimbal/Camera
 onready var orbital_plane: MeshInstance = $OrbitalPlane
 
 var _orbital_planes: Dictionary
@@ -42,6 +43,8 @@ func array_to_vector3(arr: Array) -> Vector3:
 	return Vector3(arr[0], arr[1], arr[2])
 
 func _init_simulation(json: Dictionary):
+	earth.simulation_speed = json["simulation_speed"]
+	
 	var satellites: Dictionary = json["satellites"]
 	var semimajor_axis: float = json["semimajor_axis"]
 	

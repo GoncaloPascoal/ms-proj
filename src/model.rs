@@ -6,8 +6,12 @@ use petgraph::{graphmap::GraphMap, Undirected};
 
 use crate::connection_strategy::{ConnectionStrategy, GridStrategy};
 
+/// Earth's standard gravitational parameter (gravitational constant times the Earth's mass).
 pub const GM: f64 = 3.986004418e14;
+/// Radius of the Earth, in meters.
 pub const EARTH_RADIUS: f64 = 6.371e6;
+/// Period of the Earth's rotation, in seconds.
+pub const EARTH_ROTATION_PERIOD: f64 = 86400.0;
 
 pub struct OrbitalPlane {
     id: usize,
@@ -144,11 +148,23 @@ impl Model {
     pub fn connection_range(&self) -> f64 {
         self.connection_range
     }
+
+    /// Returns the point on the surface of the Earth with the given
+    /// latitude and longitude (both in degrees).
+    pub fn surface_point(&self, latitude: f64, longitude: f64) -> Vector3<f64> {
+        let angle_y = ((self.t / EARTH_ROTATION_PERIOD) * 2.0 * PI + longitude.to_radians()) % (2.0 * PI);
+        let angle_z = latitude.to_radians();
+
+        let v = Vector3::new(EARTH_RADIUS, 0.0, 0.0);
+
+        Rotation3::from_euler_angles(0.0, angle_y, angle_z) * v
+    }
 }
 
 pub struct Simulation {
     model: Model,
     time_step: f64,
+    simulation_speed: f64,
     connection_refresh_interval: f64,
     last_update_timestamp: f64,
     topology: GraphMap<usize, f64, Undirected>,
@@ -159,6 +175,7 @@ impl Simulation {
     pub fn new(
         model: Model,
         time_step: f64,
+        simulation_speed: f64,
         starting_failure_rate: f64, 
         connection_refresh_interval: f64,
     ) -> Self {
@@ -170,6 +187,7 @@ impl Simulation {
         Simulation {
             model,
             time_step,
+            simulation_speed,
             connection_refresh_interval,
             last_update_timestamp: 0.0,
             topology,
@@ -199,6 +217,10 @@ impl Simulation {
             assert!(self.satellites()[sat2].alive);
             assert!(*distance < self.model.connection_range());
         }
+    }
+
+    pub fn simulation_speed(&self) -> f64 {
+        self.simulation_speed
     }
 
     pub fn satellites(&self) -> &[Satellite] {
@@ -243,6 +265,7 @@ pub fn init_msg(sim: &Simulation) -> String {
         msg_type: "init",
         semimajor_axis: semimajor_axis,
         inclination: inclination,
+        simulation_speed: sim.simulation_speed(),
         orbital_planes: orbital_planes,
         satellites: satellites,
     };

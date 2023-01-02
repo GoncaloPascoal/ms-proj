@@ -5,11 +5,15 @@ use crate::model::Simulation;
 
 pub fn statistics_msg(sim: &Simulation) -> String {
     let diameter_and_average = calculate_diameter_and_average(&sim.topology());
+
+    let edge_count = sim.topology().edge_count() as f64;
+    let node_count = sim.topology().node_count() as f64;
+
     let obj = object! {
         t: sim.t(),
         connected_components: connected_components(&sim.topology()),
         articulation_points: count_articulation_points(&sim.topology()),
-        graph_density: sim.topology().node_count() as f64 / sim.topology().edge_count() as f64,
+        graph_density: 2.0 * edge_count / (node_count * (node_count - 1.0)),
         d_graph_diameter: diameter_and_average.0,
         d_average_distance: diameter_and_average.1,
     };

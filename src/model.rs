@@ -2,7 +2,7 @@ use std::{f64::consts::PI, sync::Arc};
 
 use json::{object, JsonValue};
 use nalgebra::{Rotation3, Vector3};
-use petgraph::{graphmap::GraphMap, Undirected};
+use petgraph::{algo::astar, graphmap::GraphMap, Undirected, visit::EdgeRef};
 
 use crate::connection_strategy::{ConnectionStrategy, GridStrategy};
 
@@ -12,6 +12,30 @@ pub const GM: f64 = 3.986004418e14;
 pub const EARTH_RADIUS: f64 = 6.371e6;
 /// Period of the Earth's rotation, in seconds.
 pub const EARTH_ROTATION_PERIOD: f64 = 86400.0;
+/// Speed of light, in meters per second.
+pub const LIGHT_SPEED: f64 = 299792458.0;
+
+pub struct GeoCoordinates {
+    latitude: f64,
+    longitude: f64,
+}
+
+impl GeoCoordinates {
+    pub fn new(latitude: f64, longitude: f64) -> Self {
+        assert!(latitude.abs() <= 90.0);
+        assert!(longitude.abs() <= 180.0);
+
+        GeoCoordinates { latitude, longitude }
+    }
+
+    pub fn latitude(&self) -> f64 {
+        self.latitude
+    }
+
+    pub fn longitude(&self) -> f64 {
+        self.longitude
+    }
+}
 
 pub struct OrbitalPlane {
     id: usize,
@@ -151,13 +175,21 @@ impl Model {
 
     /// Returns the point on the surface of the Earth with the given
     /// latitude and longitude (both in degrees).
-    pub fn surface_point(&self, latitude: f64, longitude: f64) -> Vector3<f64> {
-        let angle_y = ((self.t / EARTH_ROTATION_PERIOD) * 2.0 * PI + longitude.to_radians()) % (2.0 * PI);
-        let angle_z = latitude.to_radians();
+    pub fn surface_point(&self, coordinates: &GeoCoordinates) -> Vector3<f64> {
+        let angle_y = ((self.t / EARTH_ROTATION_PERIOD) * 2.0 * PI + coordinates.longitude().to_radians()) % (2.0 * PI);
+        let angle_z = coordinates.latitude().to_radians();
 
         let v = Vector3::new(EARTH_RADIUS, 0.0, 0.0);
 
         Rotation3::from_euler_angles(0.0, angle_y, angle_z) * v
+    }
+
+    fn closest_satellite(&self, point: Vector3<f64>) -> &Satellite {
+        self.satellites.iter().min_by(|s1, s2| {
+            let dist1 = (point - s1.calc_position(self.t)).norm();
+            let dist2 = (point - s2.calc_position(self.t)).norm();
+            dist1.partial_cmp(&dist2).unwrap()
+        }).unwrap()
     }
 }
 
@@ -239,6 +271,35 @@ impl Simulation {
 
     pub fn orbital_planes(&self) -> &[Arc<OrbitalPlane>] {
         self.model.orbital_planes()
+    }
+
+    /// Calculates round trip time (RTT) in seconds between two locations
+    /// specified using geographical coordinates.
+    pub fn calc_rtt(&self, c1: &GeoCoordinates, c2: &GeoCoordinates) -> Option<f64> {
+        let mut distance = 0.0;
+
+        let p1 = self.model.surface_point(c1);
+        let p2 = self.model.surface_point(c2);
+
+        let sat1 = self.model.closest_satellite(p1);
+        let sat2 = self.model.closest_satellite(p2);
+
+        distance += (sat1.calc_position(self.t()) - p1).norm();
+        if let Some((cost, _)) = astar(
+            &self.topology,
+            sat1.id,
+            |n| n == sat2.id,
+            |e| *e.weight(),
+            |n| (sat2.calc_position(self.t()) - self.satellites()[n].calc_position(self.t())).norm()
+        ) {
+            distance += cost;
+        }
+        else {
+            return None;
+        }
+        distance += (sat2.calc_position(self.t()) - p2).norm();
+
+        Some(2.0 * distance / LIGHT_SPEED)
     }
 }
 

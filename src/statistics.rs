@@ -1,7 +1,7 @@
 use json::object;
-use petgraph::{algo::{connected_components, dijkstra}, graphmap::GraphMap, Undirected, visit::EdgeRef};
+use petgraph::{algo::{connected_components, dijkstra}, visit::EdgeRef};
 
-use crate::model::Simulation;
+use crate::model::{ConnectionGraph, Simulation};
 
 pub fn statistics_msg(sim: &Simulation) -> String {
     let diameter_and_average = calculate_diameter_and_average(&sim.topology());
@@ -21,7 +21,7 @@ pub fn statistics_msg(sim: &Simulation) -> String {
     obj.dump()
 }
 
-fn count_articulation_points(g: &GraphMap<usize, f64, Undirected>) -> usize {
+fn count_articulation_points(g: &ConnectionGraph) -> usize {
     let mut articulation_points = 0;
 
     let n_nodes = g.node_count();
@@ -36,7 +36,7 @@ fn count_articulation_points(g: &GraphMap<usize, f64, Undirected>) -> usize {
     articulation_points
 }
 
-fn calculate_diameter_and_average(g: &GraphMap<usize, f64, Undirected>) -> (f64, f64) {
+fn calculate_diameter_and_average(g: &ConnectionGraph) -> (f64, f64) {
     let mut diameter = 0.0;
     let mut average = 0.0;
 

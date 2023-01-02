@@ -161,13 +161,15 @@ impl Model {
     }
 }
 
+pub type ConnectionGraph = GraphMap<usize, f64, Undirected>;
+
 pub struct Simulation {
     model: Model,
     time_step: f64,
     simulation_speed: f64,
     connection_refresh_interval: f64,
     last_update_timestamp: f64,
-    topology: GraphMap<usize, f64, Undirected>,
+    topology: ConnectionGraph,
     strategy: Box<dyn ConnectionStrategy>,
 }
 
@@ -231,7 +233,7 @@ impl Simulation {
         self.model.t()
     }
 
-    pub fn topology(&self) -> &GraphMap<usize, f64, Undirected> {
+    pub fn topology(&self) -> &ConnectionGraph {
         &self.topology
     }
 

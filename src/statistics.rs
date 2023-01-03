@@ -16,6 +16,13 @@ pub fn statistics_msg(sim: &Simulation) -> String {
     let johannesburg = GeoCoordinates::new(-26.204444,  28.045556);
     let singapore    = GeoCoordinates::new(  1.291667, 103.85);
 
+    let rtt_london_nyc          = sim.calc_rtt(&london, &nyc         );
+    let rtt_london_singapore    = sim.calc_rtt(&london, &singapore   );
+    let rtt_london_johannesburg = sim.calc_rtt(&london, &johannesburg);
+    let dist_london_nyc          = GeoCoordinates::haversine_distance(&london, &nyc         );
+    let dist_london_singapore    = GeoCoordinates::haversine_distance(&london, &singapore   );
+    let dist_london_johannesburg = GeoCoordinates::haversine_distance(&london, &johannesburg);
+
     let obj = object! {
         t: sim.t(),
         connected_components: connected_components(&sim.topology()),
@@ -26,9 +33,12 @@ pub fn statistics_msg(sim: &Simulation) -> String {
         active_connections: edge_count,
         active_satellites: node_count - failures,
         failed_satellites: failures,
-        nyc: sim.calc_rtt(&london, &nyc),
-        singapore: sim.calc_rtt(&london, &singapore),
-        johannesburg: sim.calc_rtt(&london, &johannesburg),
+        rtt_nyc         : rtt_london_nyc         ,
+        rtt_singapore   : rtt_london_singapore   ,
+        rtt_johannesburg: rtt_london_johannesburg,
+        latency_nyc         : match rtt_london_nyc          { Some(rtt) => Some(rtt / dist_london_nyc         ), None => None, },
+        latency_singapore   : match rtt_london_singapore    { Some(rtt) => Some(rtt / dist_london_singapore   ), None => None, },
+        latency_johannesburg: match rtt_london_johannesburg { Some(rtt) => Some(rtt / dist_london_johannesburg), None => None, },
     };
 
     obj.dump()

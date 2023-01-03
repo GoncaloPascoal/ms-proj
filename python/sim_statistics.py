@@ -14,6 +14,7 @@ class PlotType(Enum):
     CONNECTIONS = auto()
     FAILURES = auto()
     RTT = auto()
+    LATENCY_DISTANCE_RATIO = auto()
 
 possible_plots = {
     PlotType.AVERAGE_DISTANCE: {
@@ -41,8 +42,12 @@ possible_plots = {
         'y_values': ['active_satellites', 'failed_satellites'],
     },
     PlotType.RTT: {
-        'title': 'Round Trip Time from London to Other Cities',
-        'y_values': ['nyc', 'singapore', 'johannesburg'],
+        'title': 'Round Trip Time (from London to Other Cities)',
+        'y_values': ['rtt_nyc', 'rtt_singapore', 'rtt_johannesburg'],
+    },
+    PlotType.LATENCY_DISTANCE_RATIO: {
+        'title': 'Latency to Distance Ratio (from London to Other Cities)',
+        'y_values': ['latency_nyc', 'latency_singapore', 'latency_johannesburg'],
     },
 }
 
@@ -51,8 +56,8 @@ def statistics_figure(v: dict):
     values = v
 
     plot_types = [
-        PlotType.AVERAGE_DISTANCE, PlotType.DIAMETER   , PlotType.RTT     ,
-        PlotType.CONNECTIVITY    , PlotType.CONNECTIONS, PlotType.FAILURES,
+        PlotType.AVERAGE_DISTANCE, PlotType.RTT                   , PlotType.CONNECTIVITY,
+        PlotType.DIAMETER        , PlotType.LATENCY_DISTANCE_RATIO, PlotType.FAILURES    ,
     ]
     rows, columns = 2, 3
 

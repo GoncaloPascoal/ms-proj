@@ -35,6 +35,20 @@ impl GeoCoordinates {
     pub fn longitude(&self) -> f64 {
         self.longitude
     }
+
+    pub fn haversine_distance(&self, other: &GeoCoordinates) -> f64 {
+        let self_latitude  = self .latitude().to_radians();
+        let other_latitude = other.latitude().to_radians();
+
+        let delta_latitude  = (self.latitude () - other.latitude ()).to_radians();
+        let delta_longitude = (self.longitude() - other.longitude()).to_radians();
+
+        let central_angle_inner = (delta_latitude / 2.0).sin().powi(2)
+            + self_latitude.cos() * other_latitude.cos() * (delta_longitude / 2.0).sin().powi(2);
+        let central_angle = 2.0 * central_angle_inner.sqrt().asin();
+
+        EARTH_RADIUS * central_angle
+    }
 }
 
 pub struct OrbitalPlane {

@@ -114,7 +114,7 @@ fn calculate_diameter_and_average(g: &ConnectionGraph) -> (f64, f64) {
         }
     }
     let node_count = g.node_count() as f64;
-    average /= node_count * (node_count - 1.0) / 2.0;
+    average /= node_count * (node_count - 1.0);
    
     (diameter, average)
 }

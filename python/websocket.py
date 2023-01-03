@@ -1,9 +1,16 @@
+
 import json
 import socket
+from threading import Thread
 from pprint import pprint
+
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 PORT = 2001
 DATA_BLOCK = 1024
+
+values = {}
 
 def receive_message(sock: socket.socket) -> str:
     data = []
@@ -24,15 +31,28 @@ def client():
 
     try:
         while True:
-            msg = receive_message(sock)
-            if not msg:
-                continue
-            msg = json.loads(msg.decode())
-            print(msg)
+            raw_msg = receive_message(sock)
+            if raw_msg:
+                msg = json.loads(raw_msg.decode())
+                for k, v in msg.items():
+                    values.setdefault(k, []).append(v)
     except KeyboardInterrupt:
         pass
     finally:
         sock.close()
 
+def main():
+    c = Thread(target=client)
+    c.start()
+
+    def average_distance(i):
+        ax1.clear()
+        ax1.plot(values.get('t', []), values.get('d_average_distance', []), marker='.')
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(1, 1, 1)
+    anim1 = animation.FuncAnimation(fig, average_distance, interval=1000)
+    plt.show()
+
 if __name__ == '__main__':
-    client()
+    main()

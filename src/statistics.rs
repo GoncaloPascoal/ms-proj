@@ -15,8 +15,8 @@ pub fn statistics_msg(sim: &Simulation) -> String {
         connected_components: connected_components(&sim.topology()),
         articulation_points: count_articulation_points(&sim.topology()),
         graph_density: 2.0 * edge_count / (node_count * (node_count - 1.0)),
-        d_graph_diameter: diameter_and_average.0,
-        d_average_distance: diameter_and_average.1,
+        graph_diameter: diameter_and_average.0,
+        average_distance: diameter_and_average.1,
     };
 
     obj.dump()
@@ -109,7 +109,8 @@ fn calculate_diameter_and_average(g: &ConnectionGraph) -> (f64, f64) {
             average += distance;
         }
     }
-    average /= g.edge_count() as f64;
+    let node_count = g.node_count() as f64;
+    average /= node_count * (node_count - 1.0) / 2.0;
    
     (diameter, average)
 }

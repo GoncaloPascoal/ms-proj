@@ -2,10 +2,8 @@
 import json
 import socket
 from threading import Thread
-from pprint import pprint
 
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+from sim_statistics import statistics_figure
 
 PORT = 2001
 DATA_BLOCK = 1024
@@ -42,17 +40,10 @@ def client():
         sock.close()
 
 def main():
-    c = Thread(target=client)
-    c.start()
+    client_thread = Thread(target=client)
+    client_thread.start()
 
-    def average_distance(i):
-        ax1.clear()
-        ax1.plot(values.get('t', []), values.get('d_average_distance', []), marker='.')
-
-    fig = plt.figure()
-    ax1 = fig.add_subplot(1, 1, 1)
-    anim1 = animation.FuncAnimation(fig, average_distance, interval=1000)
-    plt.show()
+    statistics_figure(values)
 
 if __name__ == '__main__':
     main()

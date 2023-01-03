@@ -9,6 +9,7 @@ pub fn statistics_msg(sim: &Simulation) -> String {
 
     let edge_count = sim.topology().edge_count() as f64;
     let node_count = sim.topology().node_count() as f64;
+    let failures = 0 as f64; // TODO
 
     let obj = object! {
         t: sim.t(),
@@ -17,6 +18,9 @@ pub fn statistics_msg(sim: &Simulation) -> String {
         graph_density: 2.0 * edge_count / (node_count * (node_count - 1.0)),
         graph_diameter: diameter_and_average.0,
         average_distance: diameter_and_average.1,
+        active_connections: edge_count,
+        active_satellites: node_count - failures,
+        failed_satellites: failures,
     };
 
     obj.dump()

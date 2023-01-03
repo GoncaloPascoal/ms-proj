@@ -7,10 +7,12 @@ from matplotlib.axes import Axes
 values = {}
 
 class PlotType(Enum):
-    AVERAGE_DISTANCE = 0
-    DIAMETER = 1
-    DENSITY = 2
-    CONNECTIVITY = 3
+    AVERAGE_DISTANCE = auto()
+    DIAMETER = auto()
+    DENSITY = auto()
+    CONNECTIVITY = auto()
+    CONNECTIONS = auto()
+    FAILURES = auto()
 
 possible_plots = {
     PlotType.AVERAGE_DISTANCE: {
@@ -29,14 +31,25 @@ possible_plots = {
         'title': 'Graph Connectivity',
         'y_values': ['connected_components', 'articulation_points'],
     },
+    PlotType.CONNECTIONS: {
+        'title': 'Active Connections between Satellites',
+        'y_values': ['active_connections'],
+    },
+    PlotType.FAILURES: {
+        'title': 'Evolution of Satellite Failures',
+        'y_values': ['active_satellites', 'failed_satellites'],
+    },
 }
 
 def statistics_figure(v: dict):
     global values
     values = v
 
-    plot_types = [PlotType.AVERAGE_DISTANCE, PlotType.DIAMETER, PlotType.DENSITY, PlotType.CONNECTIVITY]
-    rows, columns = 2, 2
+    plot_types = [
+        PlotType.AVERAGE_DISTANCE, PlotType.DIAMETER   , PlotType.DENSITY ,
+        PlotType.CONNECTIVITY    , PlotType.CONNECTIONS, PlotType.FAILURES,
+    ]
+    rows, columns = 2, 3
 
     def update(figure_plots):
         i = 0

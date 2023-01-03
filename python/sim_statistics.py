@@ -13,6 +13,7 @@ class PlotType(Enum):
     CONNECTIVITY = auto()
     CONNECTIONS = auto()
     FAILURES = auto()
+    RTT = auto()
 
 possible_plots = {
     PlotType.AVERAGE_DISTANCE: {
@@ -39,6 +40,10 @@ possible_plots = {
         'title': 'Evolution of Satellite Failures',
         'y_values': ['active_satellites', 'failed_satellites'],
     },
+    PlotType.RTT: {
+        'title': 'Round Trip Time from London to Other Cities',
+        'y_values': ['nyc', 'singapore', 'johannesburg'],
+    },
 }
 
 def statistics_figure(v: dict):
@@ -46,7 +51,7 @@ def statistics_figure(v: dict):
     values = v
 
     plot_types = [
-        PlotType.AVERAGE_DISTANCE, PlotType.DIAMETER   , PlotType.DENSITY ,
+        PlotType.AVERAGE_DISTANCE, PlotType.DIAMETER   , PlotType.RTT     ,
         PlotType.CONNECTIVITY    , PlotType.CONNECTIONS, PlotType.FAILURES,
     ]
     rows, columns = 2, 3
@@ -60,7 +65,7 @@ def statistics_figure(v: dict):
 
     fig, plots = plt.subplots(rows, columns)
     fig.subplots_adjust(hspace=0.5)
-    anim = animation.FuncAnimation(fig, lambda _ : update(plots), interval=1000)
+    _ = animation.FuncAnimation(fig, lambda _ : update(plots), interval=1000)
     plt.show()
 
 def plot_line(ax: Axes, x: str, y: str):

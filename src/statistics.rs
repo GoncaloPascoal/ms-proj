@@ -2,7 +2,7 @@
 use json::object;
 use petgraph::{algo::{connected_components, dijkstra}, visit::EdgeRef};
 
-use crate::model::{ConnectionGraph, Simulation};
+use crate::model::{ConnectionGraph, Simulation, GeoCoordinates};
 
 pub fn statistics_msg(sim: &Simulation) -> String {
     let diameter_and_average = calculate_diameter_and_average(&sim.topology());
@@ -10,6 +10,11 @@ pub fn statistics_msg(sim: &Simulation) -> String {
     let edge_count = sim.topology().edge_count() as f64;
     let node_count = sim.topology().node_count() as f64;
     let failures = 0 as f64; // TODO
+
+    let london       = GeoCoordinates::new( 51.507222,  -0.1275);
+    let nyc          = GeoCoordinates::new( 40.712778, -74.006111);
+    let johannesburg = GeoCoordinates::new(-26.204444,  28.045556);
+    let singapore    = GeoCoordinates::new(  1.291667, 103.85);
 
     let obj = object! {
         t: sim.t(),
@@ -21,6 +26,9 @@ pub fn statistics_msg(sim: &Simulation) -> String {
         active_connections: edge_count,
         active_satellites: node_count - failures,
         failed_satellites: failures,
+        nyc: sim.calc_rtt(&london, &nyc),
+        singapore: sim.calc_rtt(&london, &singapore),
+        johannesburg: sim.calc_rtt(&london, &johannesburg),
     };
 
     obj.dump()

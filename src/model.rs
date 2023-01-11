@@ -120,6 +120,15 @@ impl Satellite {
     pub fn set_status(&mut self, status: bool) {
         self.status = status;
     }
+
+    /// Returns true if the satellite has an unobstructed line of sight towards
+    /// a given point (it is not blocked by the Earth).
+    pub fn has_line_of_sight(&self, t: f64, point: Vector3<f64>) -> bool {
+        let position = self.calc_position(t);
+        let direction = (point - position).normalize();
+
+        (direction.dot(&position).powi(2) - position.norm_squared() - EARTH_RADIUS.powi(2)) < 0.0
+    }
 }
 
 pub struct Model {

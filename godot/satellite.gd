@@ -1,16 +1,18 @@
 extends KinematicBody
 
-onready var _light: OmniLight = $Light
+onready var light: OmniLight = $Light
+onready var fire: Particles = $Fire
 
 var id := 0
 var orbital_plane: Dictionary
 var status := true setget _set_status
 
 func enable_light():
-	_light.show()
+	light.show()
 
 func disable_light():
-	_light.hide()
+	light.hide()
 
 func _set_status(v: bool):
 	status = v
+	fire.emitting = !status

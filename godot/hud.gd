@@ -1,6 +1,7 @@
 extends Control
 
 signal connection_visibility_changed(value)
+signal failure_simulation_requested(satellite)
 
 onready var time_step: Label = $SimulationInfo/TimeStep
 
@@ -70,7 +71,7 @@ func on_satellite_selected(satellite: KinematicBody):
 
 func _update_failure_status():
 	if _selected_satellite:
-		selected_alive.text = "Status:" + "Alive" if _selected_satellite.status else "Dead"
+		selected_status.text = "Status:" + "Alive" if _selected_satellite.status else "Dead"
 		selected_simulate_failure.disabled = !_selected_satellite.status
 
 func _update_connections():

@@ -175,4 +175,4 @@ func _on_failure_simulation_requested(satellite: KinematicBody):
 			"msg_type": "simulate_failure",
 			"satellite_id": satellite.id,
 		}
-		_tcp.put_data(JSON.print(msg).to_utf8())
+		_tcp.put_utf8_string(JSON.print(msg))

@@ -129,6 +129,7 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
     let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, SERVER_PORT);
     let listener = TcpListener::bind(addr).unwrap();
     let mut msg;
+    let mut size_buf = [0; 4];
 
     for stream in listener.incoming() {
         let mut stream = stream?;
@@ -148,13 +149,19 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
             }
             write(&mut stream, msg);
 
-            let mut msg = String::new();
-            if stream.read_to_string(&mut msg).is_ok() {
-                if let Ok(json) = json::parse(&msg) {
-                    if json["msg_type"].as_str() == Some("simulate_failure") {
-                        if let Some(id) = json["satellite_id"].as_usize() {
-                            let mut lock = sim.lock().unwrap();
-                            lock.simulate_failure(id);
+            if let Ok(4) = stream.read(&mut size_buf) {
+                let msg_size = u32::from_le_bytes(size_buf) as usize;
+
+                let mut msg_buf = vec![0; msg_size];
+                if stream.read_exact(&mut msg_buf).is_ok() {
+                    if let Ok(msg) = String::from_utf8(msg_buf) {
+                        if let Ok(json) = json::parse(&msg) {
+                            if json["msg_type"].as_str() == Some("simulate_failure") {
+                                if let Some(id) = json["satellite_id"].as_usize() {
+                                    let mut lock = sim.lock().unwrap();
+                                    lock.simulate_failure(id);
+                                }
+                            }
                         }
                     }
                 }

@@ -12,8 +12,10 @@
 cargo build --release
 ```
 - Run the simulation, optionally providing a path to a TOML configuration file:
-
 ```
 cargo run --release path/to/config.toml
 ```
-- Run the visualization executable, which will automatically connect to the simulation through a TCP socket.
+- Run the visualization script, which will automatically connect to the simulation through a TCP socket.
+```
+python3 python/websocket.py
+```

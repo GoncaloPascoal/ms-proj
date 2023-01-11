@@ -3,7 +3,7 @@ import json
 import socket
 from threading import Thread
 
-from sim_statistics import statistics_figure
+from statistics import statistics_figure
 
 PORT = 2001
 DATA_BLOCK = 1024

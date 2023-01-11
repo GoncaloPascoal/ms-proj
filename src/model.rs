@@ -3,6 +3,7 @@ use std::{f64::consts::PI, sync::Arc};
 use json::{object, JsonValue};
 use nalgebra::{Rotation3, Vector3};
 use petgraph::{algo::astar, graphmap::GraphMap, Undirected, visit::EdgeRef};
+use rand::{thread_rng, Rng};
 
 use crate::connection_strategy::{ConnectionStrategy, GridStrategy};
 
@@ -133,7 +134,9 @@ impl Model {
         semimajor_axis: f64,
         max_connections: usize,
         connection_range: f64,
+        starting_failure_rate: f64,
     ) -> Self {
+        let mut rng = thread_rng();
         let mut orbital_planes = Vec::with_capacity(num_orbital_planes);
         let mut satellites = Vec::with_capacity(num_orbital_planes * satellites_per_plane);
 
@@ -147,7 +150,7 @@ impl Model {
                     i * satellites_per_plane + j,
                     Arc::clone(&orbital_plane),
                     2.0 * PI * j as f64 / satellites_per_plane as f64,
-                    true,
+                    rng.gen::<f64>() <= starting_failure_rate,
                 ));
             }
 
@@ -224,7 +227,6 @@ impl Simulation {
         model: Model,
         time_step: f64,
         simulation_speed: f64,
-        starting_failure_rate: f64, 
         connection_refresh_interval: f64,
     ) -> Self {
         let mut topology = GraphMap::new();

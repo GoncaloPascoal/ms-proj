@@ -83,10 +83,10 @@ fn main() -> thread::Result<()> {
             EARTH_RADIUS + orbiting_altitude,
             max_connections,
             connection_range,
+            starting_failure_rate,
         ),
         simulation_speed / update_frequency,
         simulation_speed,
-        starting_failure_rate,
         connection_refresh_interval,
     )));
 

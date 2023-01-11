@@ -82,7 +82,7 @@ custom_fonts/font = ExtResource( 2 )
 text = "Connections:"
 valign = 1
 
-[node name="Alive" type="Label" parent="SatelliteInfo"]
+[node name="Status" type="Label" parent="SatelliteInfo"]
 margin_left = 12.0
 margin_top = 124.0
 margin_right = 176.0

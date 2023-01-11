@@ -8,7 +8,7 @@ onready var satellite_info: Panel = $SatelliteInfo
 onready var selected_id: Label = $SatelliteInfo/ID
 onready var selected_position: Label = $SatelliteInfo/Position
 onready var selected_connections: Label = $SatelliteInfo/Connections
-onready var selected_alive: Label = $SatelliteInfo/Alive
+onready var selected_status: Label = $SatelliteInfo/Status
 onready var selected_simulate_failure: Button = $SatelliteInfo/SimulateFailure
 
 onready var check_box_connection_visibility: CheckBox = $Settings/ConnectionVisibility
@@ -70,8 +70,8 @@ func on_satellite_selected(satellite: KinematicBody):
 
 func _update_failure_status():
 	if _selected_satellite:
-		selected_alive.text = "Status:" + "Alive" if _selected_satellite.alive else "Dead"
-		selected_simulate_failure.disabled = !_selected_satellite.alive
+		selected_alive.text = "Status:" + "Alive" if _selected_satellite.status else "Dead"
+		selected_simulate_failure.disabled = !_selected_satellite.status
 
 func _update_connections():
 	if _selected_satellite:

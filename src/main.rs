@@ -1,5 +1,5 @@
 
-use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{Write, self}};
+use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{Write, self, Read}};
 use toml::Value;
 
 use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, Model};
@@ -70,7 +70,7 @@ fn main() -> thread::Result<()> {
         update_frequency_server     = simulation_parameters["update_frequency_server"]    .as_float().unwrap_or(update_frequency);
         connection_refresh_interval = simulation_parameters["connection_refresh_interval"].as_float().unwrap();
         starting_failure_rate       = simulation_parameters["starting_failure_rate"]      .as_float().unwrap_or(0.0);
-        assert!(0.0 <= starting_failure_rate && starting_failure_rate <= 1.0);
+        assert!((0.0..=1.0).contains(&starting_failure_rate));
     } else {
         panic!("More than one argument!");
     }
@@ -121,7 +121,7 @@ fn simulation_thread(sim: Arc<Mutex<Simulation>>, simulation_steps: usize, delay
 
 fn write(stream: &mut TcpStream, msg: String) {
     let bytes = msg.as_bytes();
-    stream.write(&(bytes.len() as u32).to_ne_bytes()).unwrap();
+    stream.write_all(&(bytes.len() as u32).to_ne_bytes()).unwrap();
     stream.write_all(bytes).unwrap();
 }
 
@@ -139,6 +139,7 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
         }
         write(&mut stream, msg);
 
+        stream.set_nonblocking(true)?;
         for _ in 0..communication_steps {
             thread::sleep(delay);
             {
@@ -146,6 +147,18 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
                 msg = update_msg(&lock);
             }
             write(&mut stream, msg);
+
+            let mut msg = String::new();
+            if stream.read_to_string(&mut msg).is_ok() {
+                if let Ok(json) = json::parse(&msg) {
+                    if json["msg_type"].as_str() == Some("simulate_failure") {
+                        if let Some(id) = json["satellite_id"].as_usize() {
+                            let mut lock = sim.lock().unwrap();
+                            lock.simulate_failure(id);
+                        }
+                    }
+                }
+            }
         }
     }
 

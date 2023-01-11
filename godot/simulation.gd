@@ -77,6 +77,7 @@ func _update_simulation(json: Dictionary):
 		
 		var position = array_to_vector3(data["position"]) * SCALE
 		satellite.global_translation = position
+		satellite.status = data["status"]
 	
 	if json.has("connections"):
 		_update_connections(json["connections"])
@@ -174,4 +175,4 @@ func _on_failure_simulation_requested(satellite: KinematicBody):
 			"msg_type": "simulate_failure",
 			"satellite_id": satellite.id,
 		}
-		_tcp.put_utf8_string(JSON.print(msg))
+		_tcp.put_data(JSON.print(msg).to_utf8())

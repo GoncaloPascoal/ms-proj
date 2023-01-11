@@ -4,7 +4,7 @@ onready var _light: OmniLight = $Light
 
 var id := 0
 var orbital_plane: Dictionary
-var alive := true setget _set_alive
+var status := true setget _set_status
 
 func enable_light():
 	_light.show()
@@ -12,5 +12,5 @@ func enable_light():
 func disable_light():
 	_light.hide()
 
-func _set_alive(v: bool):
-	alive = v
+func _set_status(v: bool):
+	status = v

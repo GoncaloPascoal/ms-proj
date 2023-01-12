@@ -65,11 +65,11 @@ fn main() -> thread::Result<()> {
         max_connections      = constellation_parameters["max_connections"]     .as_integer().unwrap() as usize;
         connection_range     = constellation_parameters["connection_range"]    .as_float()  .unwrap();
 
-        simulation_speed            = simulation_parameters["simulation_speed"]           .as_float().unwrap_or(1.0);
-        update_frequency            = simulation_parameters["update_frequency"]           .as_float().unwrap_or(10.0);
-        update_frequency_server     = simulation_parameters["update_frequency_server"]    .as_float().unwrap_or(update_frequency);
-        connection_refresh_interval = simulation_parameters["connection_refresh_interval"].as_float().unwrap();
-        starting_failure_rate       = simulation_parameters["starting_failure_rate"]      .as_float().unwrap_or(0.0);
+        simulation_speed            = simulation_parameters.get("simulation_speed")           .map(Value::as_float).flatten().unwrap_or(1.0);
+        update_frequency            = simulation_parameters.get("update_frequency")           .map(Value::as_float).flatten().unwrap_or(10.0);
+        update_frequency_server     = simulation_parameters.get("update_frequency_server")    .map(Value::as_float).flatten().unwrap_or(update_frequency);
+        connection_refresh_interval = simulation_parameters.get("connection_refresh_interval").map(Value::as_float).flatten().unwrap_or(10.0);
+        starting_failure_rate       = simulation_parameters.get("starting_failure_rate")      .map(Value::as_float).flatten().unwrap_or(0.0);
         assert!((0.0..=1.0).contains(&starting_failure_rate));
     } else {
         panic!("More than one argument!");

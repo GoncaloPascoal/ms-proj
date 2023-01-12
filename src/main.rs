@@ -32,7 +32,7 @@ fn main() -> thread::Result<()> {
         orbiting_altitude = 0.55e6;
         num_orbital_planes = 10;
         satellites_per_plane = 20;
-        inclination = 0.6;
+        inclination = 60.0;
         max_connections = 4;
         connection_range = 1e10;
 
@@ -79,7 +79,7 @@ fn main() -> thread::Result<()> {
         Model::new(
             num_orbital_planes,
             satellites_per_plane,
-            inclination,
+            inclination.to_radians(),
             EARTH_RADIUS + orbiting_altitude,
             max_connections,
             connection_range,

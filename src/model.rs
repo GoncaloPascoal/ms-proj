@@ -152,6 +152,7 @@ impl Model {
         num_orbital_planes: usize,
         satellites_per_plane: usize,
         inclination: f64,
+        longitude_interval: Option<f64>,
         semimajor_axis: f64,
         max_connections: usize,
         connection_range: f64,
@@ -162,8 +163,13 @@ impl Model {
         let mut satellites = Vec::with_capacity(num_orbital_planes * satellites_per_plane);
 
         for i in 0..num_orbital_planes {
+            let longitude = match longitude_interval {
+                Some(interval) => i as f64 * interval,
+                None => 2.0 * PI * i as f64 / num_orbital_planes as f64,
+            };
+
             let orbital_plane = Arc::new(OrbitalPlane::new(
-                i, semimajor_axis, inclination, 2.0 * PI * i as f64 / num_orbital_planes as f64,
+                i, semimajor_axis, inclination, longitude,
             ));
 
             for j in 0..satellites_per_plane {

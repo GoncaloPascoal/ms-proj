@@ -19,6 +19,7 @@ fn main() -> thread::Result<()> {
     let num_orbital_planes: usize;
     let satellites_per_plane: usize;
     let inclination: f64;
+    let longitude_interval: Option<f64>;
     let max_connections: usize;
     let connection_range: f64;
 
@@ -33,6 +34,7 @@ fn main() -> thread::Result<()> {
         num_orbital_planes = 10;
         satellites_per_plane = 20;
         inclination = 60.0;
+        longitude_interval = None;
         max_connections = 4;
         connection_range = 1e10;
 
@@ -62,6 +64,7 @@ fn main() -> thread::Result<()> {
         num_orbital_planes   = constellation_parameters["num_orbital_planes"]  .as_integer().unwrap() as usize;
         satellites_per_plane = constellation_parameters["satellites_per_plane"].as_integer().unwrap() as usize;
         inclination          = constellation_parameters["inclination"]         .as_float()  .unwrap();
+        longitude_interval   = constellation_parameters.get("longitude").map(Value::as_float).flatten();
         max_connections      = constellation_parameters["max_connections"]     .as_integer().unwrap() as usize;
         connection_range     = constellation_parameters["connection_range"]    .as_float()  .unwrap();
 
@@ -80,6 +83,7 @@ fn main() -> thread::Result<()> {
             num_orbital_planes,
             satellites_per_plane,
             inclination.to_radians(),
+            longitude_interval.map(f64::to_radians),
             EARTH_RADIUS + orbiting_altitude,
             max_connections,
             connection_range,

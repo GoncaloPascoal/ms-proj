@@ -30,7 +30,6 @@ var _selected_satellite: KinematicBody
 func _ready():
 	connect("satellite_selected", hud, "on_satellite_selected")
 	hud.connect("connection_visibility_changed", self, "_on_connection_visibility_changed")
-	hud.connect("coverage_visibility_changed", self, "_on_coverage_visibility_changed")
 	hud.connect("failure_simulation_requested", self, "_on_failure_simulation_requested")
 	
 	$Earth.scale = EARTH_RADIUS * SCALE * Vector3.ONE
@@ -173,10 +172,6 @@ func _on_connection_visibility_changed(value: bool):
 	for node in connections_root.get_children():
 		if node.valid:
 			node.set_active(_visible_connections)
-
-func _on_coverage_visibility_changed(value: bool):
-	for sat in satellites_root.get_children():
-		sat.set_coverage_visibility(value)
 
 func _on_failure_simulation_requested(satellite: KinematicBody):
 	if _tcp.get_status() == StreamPeerTCP.STATUS_CONNECTED:

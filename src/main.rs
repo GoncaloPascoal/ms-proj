@@ -64,15 +64,15 @@ fn main() -> thread::Result<()> {
         num_orbital_planes   = constellation_parameters["num_orbital_planes"]  .as_integer().unwrap() as usize;
         satellites_per_plane = constellation_parameters["satellites_per_plane"].as_integer().unwrap() as usize;
         inclination          = constellation_parameters["inclination"]         .as_float()  .unwrap();
-        longitude_interval   = constellation_parameters.get("longitude").map(Value::as_float).flatten();
+        longitude_interval   = constellation_parameters.get("longitude").and_then(Value::as_float);
         max_connections      = constellation_parameters["max_connections"]     .as_integer().unwrap() as usize;
         connection_range     = constellation_parameters["connection_range"]    .as_float()  .unwrap();
 
-        simulation_speed            = simulation_parameters.get("simulation_speed")           .map(Value::as_float).flatten().unwrap_or(1.0);
-        update_frequency            = simulation_parameters.get("update_frequency")           .map(Value::as_float).flatten().unwrap_or(10.0);
-        update_frequency_server     = simulation_parameters.get("update_frequency_server")    .map(Value::as_float).flatten().unwrap_or(update_frequency);
-        connection_refresh_interval = simulation_parameters.get("connection_refresh_interval").map(Value::as_float).flatten().unwrap_or(10.0);
-        starting_failure_rate       = simulation_parameters.get("starting_failure_rate")      .map(Value::as_float).flatten().unwrap_or(0.0);
+        simulation_speed            = simulation_parameters.get("simulation_speed")           .and_then(Value::as_float).unwrap_or(1.0);
+        update_frequency            = simulation_parameters.get("update_frequency")           .and_then(Value::as_float).unwrap_or(10.0);
+        update_frequency_server     = simulation_parameters.get("update_frequency_server")    .and_then(Value::as_float).unwrap_or(update_frequency);
+        connection_refresh_interval = simulation_parameters.get("connection_refresh_interval").and_then(Value::as_float).unwrap_or(10.0);
+        starting_failure_rate       = simulation_parameters.get("starting_failure_rate")      .and_then(Value::as_float).unwrap_or(0.0);
         assert!((0.0..=1.0).contains(&starting_failure_rate));
     } else {
         panic!("More than one argument!");

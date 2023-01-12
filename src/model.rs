@@ -5,7 +5,7 @@ use nalgebra::{Rotation3, Vector3};
 use petgraph::{algo::astar, graphmap::GraphMap, Undirected, visit::EdgeRef};
 use rand::{thread_rng, Rng};
 
-use crate::connection_strategy::{ConnectionStrategy, GridStrategy};
+use crate::connection_strategy::{ConnectionStrategy, GridStrategy, NearestNeighborStrategy};
 
 /// Earth's standard gravitational parameter (gravitational constant times the Earth's mass).
 pub const GM: f64 = 3.986004418e14;
@@ -221,6 +221,10 @@ impl Model {
         self.connection_range
     }
 
+    pub fn distance_between_satellites(&self, sat1: &Satellite, sat2: &Satellite) -> f64 {
+        sat1.calc_position(self.t).metric_distance(&sat2.calc_position(self.t))
+    }
+
     /// Returns the point on the surface of the Earth with the given
     /// latitude and longitude (both in degrees).
     pub fn surface_point(&self, coordinates: &GeoCoordinates) -> Vector3<f64> {
@@ -234,8 +238,8 @@ impl Model {
 
     fn closest_satellite(&self, point: &Vector3<f64>) -> &Satellite {
         self.satellites.iter().min_by(|s1, s2| {
-            let dist1 = (point - s1.calc_position(self.t)).norm();
-            let dist2 = (point - s2.calc_position(self.t)).norm();
+            let dist1 = point.metric_distance(&s1.calc_position(self.t));
+            let dist2 = point.metric_distance(&s2.calc_position(self.t));
             dist1.partial_cmp(&dist2).unwrap()
         }).unwrap()
     }
@@ -272,7 +276,7 @@ impl Simulation {
             connection_refresh_interval,
             last_update_timestamp: 0.0,
             topology,
-            strategy: Box::new(GridStrategy::new()),
+            strategy: Box::new(NearestNeighborStrategy::new()),
         }
     }
 

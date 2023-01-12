@@ -5,17 +5,15 @@ use petgraph::graphmap::GraphMap;
 use crate::model::{Model, ConnectionGraph};
 
 fn is_edge_valid(topology: &ConnectionGraph, model: &Model, a: usize, b: usize) -> bool {
-    let t = model.t();
-
     let sat_a = &model.satellites()[a];
     let sat_b = &model.satellites()[b];
 
-    let pos_b = sat_b.calc_position(t);
+    let pos_b = sat_b.position();
 
     let both_alive = sat_a.status() && sat_b.status();
     let connections_available = topology.edges(a).count() < model.max_connections() && topology.edges(b).count() < model.max_connections();
 
-    both_alive && connections_available && sat_a.has_line_of_sight(t, &pos_b)
+    both_alive && connections_available && sat_a.has_line_of_sight(&pos_b)
 }
 
 fn add_edge(topology: &mut ConnectionGraph, model: &Model, a: usize, b: usize) {
@@ -23,10 +21,8 @@ fn add_edge(topology: &mut ConnectionGraph, model: &Model, a: usize, b: usize) {
         return;
     }
 
-    let t = model.t();
-
-    let pos_a = model.satellites()[a].calc_position(t);
-    let pos_b = model.satellites()[b].calc_position(t);
+    let pos_a = model.satellites()[a].position();
+    let pos_b = model.satellites()[b].position();
 
     let length = (pos_a - pos_b).norm();
 

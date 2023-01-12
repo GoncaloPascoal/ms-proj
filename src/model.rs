@@ -81,6 +81,7 @@ pub struct Satellite {
     id: usize,
     orbital_plane: Arc<OrbitalPlane>,
     arg_periapsis: f64,
+    position: Vector3<f64>,
     status: bool,
 }
 
@@ -88,19 +89,24 @@ impl Satellite {
     fn new(
         id: usize, 
         orbital_plane: Arc<OrbitalPlane>, 
-        arg_periapsis: f64, 
+        arg_periapsis: f64,
         status: bool,
     ) -> Self {
         Satellite {
             id,
             orbital_plane,
             arg_periapsis,
+            position: Vector3::zeros(),
             status,
         }
     }
 
     pub fn id(&self) -> usize {
         self.id
+    }
+
+    pub fn position(&self) -> &Vector3<f64> {
+        &self.position
     }
 
     pub fn status(&self) -> bool {
@@ -111,31 +117,30 @@ impl Satellite {
         self.status = status;
     }
 
-    pub fn calc_position(&self, t: f64) -> Vector3<f64> {
+    pub fn recalculate_position(&mut self, t: f64) {
         let r = self.orbital_plane.semimajor_axis;
         let true_anomaly = (t * self.orbital_plane.angular_speed) % (2.0 * PI);
 
-        let position = Vector3::new(r, 0.0, 0.0);
+        let new_position = Vector3::new(r, 0.0, 0.0);
 
-        Rotation3::from_euler_angles(0.0, self.orbital_plane.longitude, 0.0) *
-        Rotation3::from_euler_angles(self.orbital_plane.inclination, 0.0, 0.0) *
-        Rotation3::from_euler_angles(0.0, self.arg_periapsis + true_anomaly, 0.0) *
-        position
+        self.position = Rotation3::from_euler_angles(0.0, self.orbital_plane.longitude, 0.0) *
+            Rotation3::from_euler_angles(self.orbital_plane.inclination, 0.0, 0.0) *
+            Rotation3::from_euler_angles(0.0, self.arg_periapsis + true_anomaly, 0.0) *
+            new_position
     }
 
-    pub fn calc_velocity(&self, t: f64) -> Vector3<f64> {
-        let direction = Rotation3::from_euler_angles(0.0, PI / 2.0, 0.0) * self.calc_position(t).normalize();
+    pub fn velocity(&self) -> Vector3<f64> {
+        let direction = Rotation3::from_euler_angles(0.0, PI / 2.0, 0.0) * self.position.normalize();
 
         self.orbital_plane.orbital_speed * direction
     }
 
     /// Returns true if the satellite has an unobstructed line of sight towards
     /// a given point (it is not blocked by the Earth).
-    pub fn has_line_of_sight(&self, t: f64, point: &Vector3<f64>) -> bool {
-        let position = self.calc_position(t);
-        let direction = (point - position).normalize();
+    pub fn has_line_of_sight(&self, point: &Vector3<f64>) -> bool {
+        let direction = (point - self.position).normalize();
 
-        (direction.dot(&position).powi(2) - position.norm_squared() - EARTH_RADIUS.powi(2)) < 0.0
+        (direction.dot(&self.position).powi(2) - self.position.norm_squared() - EARTH_RADIUS.powi(2)) < 0.0
     }
 }
 
@@ -211,6 +216,10 @@ impl Model {
 
     pub fn increment_t(&mut self, time_step: f64) {
         self.t += time_step;
+        let t = self.t;
+        for sat in self.satellites_mut() {
+            sat.recalculate_position(t);
+        }
     }
 
     pub fn max_connections(&self) -> usize {
@@ -222,7 +231,7 @@ impl Model {
     }
 
     pub fn distance_between_satellites(&self, sat1: &Satellite, sat2: &Satellite) -> f64 {
-        sat1.calc_position(self.t).metric_distance(&sat2.calc_position(self.t))
+        sat1.position().metric_distance(&sat2.position())
     }
 
     /// Returns the point on the surface of the Earth with the given
@@ -238,8 +247,8 @@ impl Model {
 
     fn closest_satellite(&self, point: &Vector3<f64>) -> &Satellite {
         self.satellites.iter().min_by(|s1, s2| {
-            let dist1 = point.metric_distance(&s1.calc_position(self.t));
-            let dist2 = point.metric_distance(&s2.calc_position(self.t));
+            let dist1 = point.metric_distance(&s1.position());
+            let dist2 = point.metric_distance(&s2.position());
             dist1.partial_cmp(&dist2).unwrap()
         }).unwrap()
     }
@@ -336,20 +345,20 @@ impl Simulation {
         let sat1 = self.model.closest_satellite(&p1);
         let sat2 = self.model.closest_satellite(&p2);
 
-        distance += (sat1.calc_position(self.t()) - p1).norm();
+        distance += (sat1.position() - p1).norm();
         if let Some((cost, _)) = astar(
             &self.topology,
             sat1.id,
             |n| n == sat2.id,
             |e| *e.weight(),
-            |n| (sat2.calc_position(self.t()) - self.satellites()[n].calc_position(self.t())).norm()
+            |n| (sat2.position() - self.satellites()[n].position()).norm()
         ) {
             distance += cost;
         }
         else {
             return None;
         }
-        distance += (sat2.calc_position(self.t()) - p2).norm();
+        distance += (sat2.position() - p2).norm();
 
         Some(2.0 * distance / LIGHT_SPEED)
     }
@@ -397,7 +406,7 @@ pub fn update_msg(sim: &Simulation) -> String {
     let mut satellites = JsonValue::new_object();
     for sat in sim.satellites() {
         satellites[sat.id.to_string()] = object! {
-            position: sat.calc_position(sim.t()).as_slice(),
+            position: sat.position().as_slice(),
             status: sat.status,
         };
     }

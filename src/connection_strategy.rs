@@ -3,11 +3,19 @@ use petgraph::graphmap::GraphMap;
 use crate::model::{Model, ConnectionGraph};
 
 fn add_edge(topology: &mut ConnectionGraph, model: &Model, a: usize, b: usize) {
-    let pos_a = model.satellites()[a].calc_position(model.t());
-    let pos_b = model.satellites()[b].calc_position(model.t());
-    let length = (pos_a - pos_b).norm();
+    let t = model.t();
 
-    topology.add_edge(a, b, length);
+    let sat_a = &model.satellites()[a];
+    let sat_b = &model.satellites()[b];
+
+    let pos_b = sat_b.calc_position(t);
+
+    if sat_a.status() && sat_b.status() && sat_a.has_line_of_sight(t, &pos_b) {
+        let pos_a = sat_a.calc_position(t);
+        let length = (pos_a - pos_b).norm();
+    
+        topology.add_edge(a, b, length);
+    }
 }
 
 pub trait ConnectionStrategy: Send {
@@ -25,8 +33,10 @@ impl GridStrategy {
 impl ConnectionStrategy for GridStrategy {
     fn run(&mut self, model: &Model) -> ConnectionGraph {
         let mut topology = GraphMap::new();
-        for sat in 0..model.satellites().len() {
-            topology.add_node(sat);
+        for sat in model.satellites() {
+            if sat.status() {
+                topology.add_node(sat.id());
+            }
         }
 
         let sats = model.satellites().len();

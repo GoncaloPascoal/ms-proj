@@ -131,7 +131,7 @@ impl Satellite {
 
     /// Returns true if the satellite has an unobstructed line of sight towards
     /// a given point (it is not blocked by the Earth).
-    pub fn has_line_of_sight(&self, t: f64, point: Vector3<f64>) -> bool {
+    pub fn has_line_of_sight(&self, t: f64, point: &Vector3<f64>) -> bool {
         let position = self.calc_position(t);
         let direction = (point - position).normalize();
 
@@ -232,7 +232,7 @@ impl Model {
         Rotation3::from_euler_angles(0.0, angle_y, angle_z) * v
     }
 
-    fn closest_satellite(&self, point: Vector3<f64>) -> &Satellite {
+    fn closest_satellite(&self, point: &Vector3<f64>) -> &Satellite {
         self.satellites.iter().min_by(|s1, s2| {
             let dist1 = (point - s1.calc_position(self.t)).norm();
             let dist2 = (point - s2.calc_position(self.t)).norm();
@@ -329,8 +329,8 @@ impl Simulation {
         let p1 = self.model.surface_point(c1);
         let p2 = self.model.surface_point(c2);
 
-        let sat1 = self.model.closest_satellite(p1);
-        let sat2 = self.model.closest_satellite(p2);
+        let sat1 = self.model.closest_satellite(&p1);
+        let sat2 = self.model.closest_satellite(&p2);
 
         distance += (sat1.calc_position(self.t()) - p1).norm();
         if let Some((cost, _)) = astar(
@@ -352,6 +352,7 @@ impl Simulation {
 
     pub fn simulate_failure(&mut self, id: usize) {
         self.model.satellites_mut()[id].set_status(false);
+        self.topology.remove_node(id);
     }
 }
 

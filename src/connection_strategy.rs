@@ -1,8 +1,8 @@
 
-use petgraph::{graphmap::GraphMap, Undirected};
-use crate::model::Model;
+use petgraph::graphmap::GraphMap;
+use crate::model::{Model, ConnectionGraph};
 
-fn add_edge(topology: &mut GraphMap<usize, f64, Undirected>, model: &Model, a: usize, b: usize) {
+fn add_edge(topology: &mut ConnectionGraph, model: &Model, a: usize, b: usize) {
     let pos_a = model.satellites()[a].calc_position(model.t());
     let pos_b = model.satellites()[b].calc_position(model.t());
     let length = (pos_a - pos_b).norm();
@@ -11,7 +11,7 @@ fn add_edge(topology: &mut GraphMap<usize, f64, Undirected>, model: &Model, a: u
 }
 
 pub trait ConnectionStrategy: Send {
-    fn run(&mut self, model: &Model) -> GraphMap<usize, f64, Undirected>;
+    fn run(&mut self, model: &Model) -> ConnectionGraph;
 }
 
 pub struct GridStrategy;
@@ -23,7 +23,7 @@ impl GridStrategy {
 }
 
 impl ConnectionStrategy for GridStrategy {
-    fn run(&mut self, model: &Model) -> GraphMap<usize, f64, Undirected> {
+    fn run(&mut self, model: &Model) -> ConnectionGraph {
         let mut topology = GraphMap::new();
         for sat in 0..model.satellites().len() {
             topology.add_node(sat);

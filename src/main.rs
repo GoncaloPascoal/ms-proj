@@ -102,8 +102,8 @@ fn main() -> thread::Result<()> {
     let server_handle = thread::spawn(move || { server_thread(sim_server, server_steps, delay_server) });
     let statistics_handle = thread::spawn(move || { statistics_thread(sim_statistics, server_steps, delay_server) });
 
-            simulation_handle.join().expect("Couldn't join simulation thread.");
-    let _ = server_handle    .join().expect("Couldn't join visualization server thread.");
+    simulation_handle.join().expect("Couldn't join simulation thread.");
+    let _ = server_handle.join().expect("Couldn't join visualization server thread.");
     let _ = statistics_handle.join().expect("Couldn't join statistics server thread.");
 
     Ok(())

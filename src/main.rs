@@ -21,7 +21,6 @@ fn main() -> thread::Result<()> {
     let inclination: f64;
     let longitude_interval: Option<f64>;
     let max_connections: usize;
-    let connection_range: f64;
 
     let simulation_speed: f64;
     let update_frequency: f64;
@@ -36,7 +35,6 @@ fn main() -> thread::Result<()> {
         inclination = 60.0;
         longitude_interval = None;
         max_connections = 4;
-        connection_range = 1e10;
 
         simulation_speed = 10.0;
         update_frequency = 10.0;
@@ -66,7 +64,6 @@ fn main() -> thread::Result<()> {
         inclination          = constellation_parameters["inclination"]         .as_float()  .unwrap();
         longitude_interval   = constellation_parameters.get("longitude").and_then(Value::as_float);
         max_connections      = constellation_parameters["max_connections"]     .as_integer().unwrap() as usize;
-        connection_range     = constellation_parameters["connection_range"]    .as_float()  .unwrap();
 
         simulation_speed            = simulation_parameters.get("simulation_speed")           .and_then(Value::as_float).unwrap_or(1.0);
         update_frequency            = simulation_parameters.get("update_frequency")           .and_then(Value::as_float).unwrap_or(10.0);
@@ -86,7 +83,6 @@ fn main() -> thread::Result<()> {
             longitude_interval.map(f64::to_radians),
             EARTH_RADIUS + orbiting_altitude,
             max_connections,
-            connection_range,
             starting_failure_rate,
         ),
         simulation_speed / update_frequency,

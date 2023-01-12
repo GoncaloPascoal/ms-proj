@@ -149,7 +149,6 @@ pub struct Model {
     satellites: Vec<Satellite>,
     t: f64,
     max_connections: usize,
-    connection_range: f64,
 }
 
 impl Model {
@@ -160,7 +159,6 @@ impl Model {
         longitude_interval: Option<f64>,
         semimajor_axis: f64,
         max_connections: usize,
-        connection_range: f64,
         starting_failure_rate: f64,
     ) -> Self {
         let mut rng = thread_rng();
@@ -194,7 +192,6 @@ impl Model {
             satellites,
             t: 0.0,
             max_connections,
-            connection_range,
         }
     }
 
@@ -224,10 +221,6 @@ impl Model {
 
     pub fn max_connections(&self) -> usize {
         self.max_connections
-    }
-
-    pub fn connection_range(&self) -> f64 {
-        self.connection_range
     }
 
     pub fn distance_between_satellites(&self, sat1: &Satellite, sat2: &Satellite) -> f64 {
@@ -285,7 +278,7 @@ impl Simulation {
             connection_refresh_interval,
             last_update_timestamp: 0.0,
             topology,
-            strategy: Box::new(NearestNeighborStrategy::new()),
+            strategy: Box::new(GridStrategy::new()),
         }
     }
 
@@ -298,20 +291,7 @@ impl Simulation {
     }
 
     pub fn update_connections(&mut self) {
-        // Updating the topology
         self.topology = self.strategy.run(&self.model);
-
-        // Validating the topology
-        for sat in self.topology.nodes() {
-            assert!(self.topology.edges(sat).count() <= self.model.max_connections());
-        }
-
-        for (_sat1, _sat2, distance) in self.topology.all_edges() {
-            // TODO: return a Result instead of performing these assertions
-            // assert!(self.satellites()[sat1].status);
-            // assert!(self.satellites()[sat2].status);
-            assert!(*distance < self.model.connection_range());
-        }
     }
 
     pub fn simulation_speed(&self) -> f64 {

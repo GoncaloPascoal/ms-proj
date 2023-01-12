@@ -231,7 +231,7 @@ impl Model {
     }
 
     pub fn distance_between_satellites(&self, sat1: &Satellite, sat2: &Satellite) -> f64 {
-        sat1.position().metric_distance(&sat2.position())
+        sat1.position().metric_distance(sat2.position())
     }
 
     /// Returns the point on the surface of the Earth with the given
@@ -247,8 +247,8 @@ impl Model {
 
     fn closest_satellite(&self, point: &Vector3<f64>) -> &Satellite {
         self.satellites.iter().min_by(|s1, s2| {
-            let dist1 = point.metric_distance(&s1.position());
-            let dist2 = point.metric_distance(&s2.position());
+            let dist1 = point.metric_distance(s1.position());
+            let dist2 = point.metric_distance(s2.position());
             dist1.partial_cmp(&dist2).unwrap()
         }).unwrap()
     }

@@ -67,6 +67,7 @@ name = "iscs"
 version = "0.1.0"
 dependencies = [
  "json",
+ "kiddo",
  "nalgebra",
  "petgraph",
  "rand",
@@ -78,6 +79,15 @@ name = "json"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd"
+
+[[package]]
+name = "kiddo"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc0a5c92307668140bf7d63a03a23e2da0b0453801fd54888c903cb7f723c293"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "libc"

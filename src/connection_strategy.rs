@@ -1,6 +1,5 @@
 
-use std::time::Instant;
-
+use kiddo::{KdTree, distance::squared_euclidean};
 use petgraph::graphmap::GraphMap;
 use crate::model::{Model, ConnectionGraph};
 
@@ -13,7 +12,7 @@ fn is_edge_valid(topology: &ConnectionGraph, model: &Model, a: usize, b: usize) 
     let both_alive = sat_a.status() && sat_b.status();
     let connections_available = topology.edges(a).count() < model.max_connections() && topology.edges(b).count() < model.max_connections();
 
-    both_alive && connections_available && sat_a.has_line_of_sight(&pos_b)
+    both_alive && connections_available && sat_a.has_line_of_sight(pos_b)
 }
 
 fn add_edge(topology: &mut ConnectionGraph, model: &Model, a: usize, b: usize) {
@@ -71,52 +70,39 @@ impl ConnectionStrategy for GridStrategy {
     }
 }
 
-pub struct NearestNeighborStrategy;
+pub struct NearestNeighborStrategy {
+    kd_tree: KdTree<f64, usize, 3>,
+}
 
 impl NearestNeighborStrategy {
     pub fn new() -> Self {
-        NearestNeighborStrategy
+        NearestNeighborStrategy {
+            kd_tree: KdTree::new(),
+        }
     }
 }
 
 impl ConnectionStrategy for NearestNeighborStrategy {
     fn run(&mut self, model: &Model) -> ConnectionGraph {
-        let instant = Instant::now();
-
         let mut topology: ConnectionGraph = GraphMap::new();
         let max_connections = model.max_connections();
 
+        self.kd_tree = KdTree::new();
+
         model.satellites().iter().filter(|s| s.status()).for_each(|s| {
             topology.add_node(s.id());
+            let _ = self.kd_tree.add(s.position().as_slice().try_into().unwrap(), s.id());
         });
 
         for sat in model.satellites() {
-            let mut other_satellites: Vec<usize> = model.satellites().iter().filter_map(|s|
-                if s.id() != sat.id() && is_edge_valid(&topology, model, sat.id(), s.id()) {
-                    Some(s.id())
-                } else {
-                    None
-                }
-            ).collect();
-
-            other_satellites.sort_by(|a, b| {
-                let sat_a = &model.satellites()[*a];
-                let sat_b = &model.satellites()[*b];
-
-                model.distance_between_satellites(sat, sat_a)
-                    .partial_cmp(&model.distance_between_satellites(sat, sat_b))
-                    .unwrap()
-            });
-
-            for other in other_satellites {
+            let pos = sat.position().as_slice().try_into().unwrap();
+            for other in self.kd_tree.iter_nearest(pos, &squared_euclidean).unwrap() {
                 if topology.edges(sat.id()).count() == max_connections {
                     break;
                 }
-                add_edge(&mut topology, model, sat.id(), other);
+                add_edge(&mut topology, model, sat.id(), *other.1);
             }
         }
-
-        println!("{} ms", instant.elapsed().as_millis());
 
         topology
     }

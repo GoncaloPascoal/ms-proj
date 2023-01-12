@@ -157,13 +157,17 @@ impl Model {
         satellites_per_plane: usize,
         inclination: f64,
         longitude_interval: Option<f64>,
+        phasing: usize,
         semimajor_axis: f64,
         max_connections: usize,
         starting_failure_rate: f64,
     ) -> Self {
+        let num_satellites = num_orbital_planes * satellites_per_plane;
+
         let mut rng = thread_rng();
         let mut orbital_planes = Vec::with_capacity(num_orbital_planes);
-        let mut satellites = Vec::with_capacity(num_orbital_planes * satellites_per_plane);
+        let mut satellites = Vec::with_capacity(num_satellites);
+        let phase_offset = phasing as f64 * PI / num_satellites as f64;
 
         for i in 0..num_orbital_planes {
             let longitude = match longitude_interval {
@@ -179,7 +183,7 @@ impl Model {
                 satellites.push(Satellite::new(
                     i * satellites_per_plane + j,
                     Arc::clone(&orbital_plane),
-                    2.0 * PI * j as f64 / satellites_per_plane as f64,
+                    (phase_offset * i as f64 + 2.0 * PI * j as f64 / satellites_per_plane as f64) % 360.0,
                     rng.gen::<f64>() >= starting_failure_rate,
                 ));
             }

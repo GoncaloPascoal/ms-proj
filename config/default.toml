@@ -1,4 +1,4 @@
-name = "default constellation"
+name = "Default"
 
 [constellation]
 altitude = 0.55e6

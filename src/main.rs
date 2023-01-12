@@ -1,5 +1,5 @@
 
-use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{Write, self}};
+use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{Write, self, Read}};
 use toml::Value;
 
 use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, Model};
@@ -65,12 +65,12 @@ fn main() -> thread::Result<()> {
         max_connections      = constellation_parameters["max_connections"]     .as_integer().unwrap() as usize;
         connection_range     = constellation_parameters["connection_range"]    .as_float()  .unwrap();
 
-        simulation_speed            = simulation_parameters["simulation_speed"]           .as_float().unwrap_or(1.0);
-        update_frequency            = simulation_parameters["update_frequency"]           .as_float().unwrap_or(10.0);
-        update_frequency_server     = simulation_parameters["update_frequency_server"]    .as_float().unwrap_or(update_frequency);
-        connection_refresh_interval = simulation_parameters["connection_refresh_interval"].as_float().unwrap();
-        starting_failure_rate       = simulation_parameters["starting_failure_rate"]      .as_float().unwrap_or(0.0);
-        assert!(0.0 <= starting_failure_rate && starting_failure_rate <= 1.0);
+        simulation_speed            = simulation_parameters.get("simulation_speed")           .map(Value::as_float).flatten().unwrap_or(1.0);
+        update_frequency            = simulation_parameters.get("update_frequency")           .map(Value::as_float).flatten().unwrap_or(10.0);
+        update_frequency_server     = simulation_parameters.get("update_frequency_server")    .map(Value::as_float).flatten().unwrap_or(update_frequency);
+        connection_refresh_interval = simulation_parameters.get("connection_refresh_interval").map(Value::as_float).flatten().unwrap_or(10.0);
+        starting_failure_rate       = simulation_parameters.get("starting_failure_rate")      .map(Value::as_float).flatten().unwrap_or(0.0);
+        assert!((0.0..=1.0).contains(&starting_failure_rate));
     } else {
         panic!("More than one argument!");
     }
@@ -102,8 +102,8 @@ fn main() -> thread::Result<()> {
     let server_handle = thread::spawn(move || { server_thread(sim_server, server_steps, delay_server) });
     let statistics_handle = thread::spawn(move || { statistics_thread(sim_statistics, server_steps, delay_server) });
 
-            simulation_handle.join().expect("Couldn't join simulation thread.");
-    let _ = server_handle    .join().expect("Couldn't join visualization server thread.");
+    simulation_handle.join().expect("Couldn't join simulation thread.");
+    let _ = server_handle.join().expect("Couldn't join visualization server thread.");
     let _ = statistics_handle.join().expect("Couldn't join statistics server thread.");
 
     Ok(())
@@ -121,7 +121,7 @@ fn simulation_thread(sim: Arc<Mutex<Simulation>>, simulation_steps: usize, delay
 
 fn write(stream: &mut TcpStream, msg: String) {
     let bytes = msg.as_bytes();
-    stream.write(&(bytes.len() as u32).to_ne_bytes()).unwrap();
+    stream.write_all(&(bytes.len() as u32).to_ne_bytes()).unwrap();
     stream.write_all(bytes).unwrap();
 }
 
@@ -129,6 +129,7 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
     let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, SERVER_PORT);
     let listener = TcpListener::bind(addr).unwrap();
     let mut msg;
+    let mut size_buf = [0; 4];
 
     for stream in listener.incoming() {
         let mut stream = stream?;
@@ -139,6 +140,7 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
         }
         write(&mut stream, msg);
 
+        stream.set_nonblocking(true)?;
         for _ in 0..communication_steps {
             thread::sleep(delay);
             {
@@ -146,6 +148,24 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
                 msg = update_msg(&lock);
             }
             write(&mut stream, msg);
+
+            if let Ok(4) = stream.read(&mut size_buf) {
+                let msg_size = u32::from_le_bytes(size_buf) as usize;
+
+                let mut msg_buf = vec![0; msg_size];
+                if stream.read_exact(&mut msg_buf).is_ok() {
+                    if let Ok(msg) = String::from_utf8(msg_buf) {
+                        if let Ok(json) = json::parse(&msg) {
+                            if json["msg_type"].as_str() == Some("simulate_failure") {
+                                if let Some(id) = json["satellite_id"].as_usize() {
+                                    let mut lock = sim.lock().unwrap();
+                                    lock.simulate_failure(id);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

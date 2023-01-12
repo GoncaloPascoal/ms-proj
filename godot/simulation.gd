@@ -30,6 +30,8 @@ var _selected_satellite: KinematicBody
 func _ready():
 	connect("satellite_selected", hud, "on_satellite_selected")
 	hud.connect("connection_visibility_changed", self, "_on_connection_visibility_changed")
+	hud.connect("coverage_visibility_changed", self, "_on_coverage_visibility_changed")
+	hud.connect("failure_simulation_requested", self, "_on_failure_simulation_requested")
 	
 	$Earth.scale = EARTH_RADIUS * SCALE * Vector3.ONE
 	
@@ -47,6 +49,8 @@ func _init_simulation(json: Dictionary):
 	
 	var satellites: Dictionary = json["satellites"]
 	var semimajor_axis: float = json["semimajor_axis"]
+	var altitude := semimajor_axis - EARTH_RADIUS
+	var view_angle := asin(EARTH_RADIUS / semimajor_axis)
 	
 	_orbital_planes = json["orbital_planes"]
 	_inclination = json["inclination"]
@@ -62,6 +66,8 @@ func _init_simulation(json: Dictionary):
 		var instance = satellite_scene.instance()
 		instance.id = int(id)
 		instance.orbital_plane = _orbital_planes[data["orbital_plane"]]
+		instance.altitude = 1.1 * altitude * SCALE
+		instance.view_angle = view_angle
 		
 		satellites_root.add_child(instance)
 	
@@ -76,6 +82,7 @@ func _update_simulation(json: Dictionary):
 		
 		var position = array_to_vector3(data["position"]) * SCALE
 		satellite.global_translation = position
+		satellite.status = data["status"]
 	
 	if json.has("connections"):
 		_update_connections(json["connections"])
@@ -147,11 +154,11 @@ func _unhandled_input(event: InputEvent):
 
 func _select_satellite(satellite: KinematicBody):
 	if _selected_satellite:
-		_selected_satellite.disable_light()
+		_selected_satellite.set_selected(false)
 	
 	_selected_satellite = satellite
 	if _selected_satellite:
-		_selected_satellite.enable_light()
+		_selected_satellite.set_selected(true)
 		var longitude: float = _selected_satellite.orbital_plane["longitude"]
 		orbital_plane.rotation.y = longitude
 		orbital_plane.visible = true
@@ -166,3 +173,15 @@ func _on_connection_visibility_changed(value: bool):
 	for node in connections_root.get_children():
 		if node.valid:
 			node.set_active(_visible_connections)
+
+func _on_coverage_visibility_changed(value: bool):
+	for sat in satellites_root.get_children():
+		sat.set_coverage_visibility(value)
+
+func _on_failure_simulation_requested(satellite: KinematicBody):
+	if _tcp.get_status() == StreamPeerTCP.STATUS_CONNECTED:
+		var msg := {
+			"msg_type": "simulate_failure",
+			"satellite_id": satellite.id,
+		}
+		_tcp.put_utf8_string(JSON.print(msg))

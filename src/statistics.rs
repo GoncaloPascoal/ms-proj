@@ -5,7 +5,7 @@ use petgraph::{algo::{connected_components, dijkstra}, visit::EdgeRef};
 use crate::model::{ConnectionGraph, Simulation, GeoCoordinates};
 
 pub fn statistics_msg(sim: &Simulation) -> String {
-    let diameter_and_average = calculate_diameter_and_average(&sim.topology());
+    let diameter_and_average = calculate_diameter_and_average(sim.topology());
 
     let edge_count = sim.topology().edge_count() as f64;
     let node_count = sim.topology().node_count() as f64;
@@ -25,8 +25,8 @@ pub fn statistics_msg(sim: &Simulation) -> String {
 
     let obj = object! {
         t: sim.t(),
-        connected_components: connected_components(&sim.topology()),
-        articulation_points: count_articulation_points(&sim.topology()),
+        connected_components: connected_components(sim.topology()),
+        articulation_points: count_articulation_points(sim.topology()),
         graph_density: 2.0 * edge_count / (node_count * (node_count - 1.0)),
         graph_diameter: diameter_and_average.0,
         average_distance: diameter_and_average.1,
@@ -36,9 +36,9 @@ pub fn statistics_msg(sim: &Simulation) -> String {
         rtt_nyc         : rtt_london_nyc         ,
         rtt_singapore   : rtt_london_singapore   ,
         rtt_johannesburg: rtt_london_johannesburg,
-        latency_nyc         : match rtt_london_nyc          { Some(rtt) => Some(rtt / dist_london_nyc         ), None => None, },
-        latency_singapore   : match rtt_london_singapore    { Some(rtt) => Some(rtt / dist_london_singapore   ), None => None, },
-        latency_johannesburg: match rtt_london_johannesburg { Some(rtt) => Some(rtt / dist_london_johannesburg), None => None, },
+        latency_nyc         : rtt_london_nyc.map(|rtt| rtt / dist_london_nyc),
+        latency_singapore   : rtt_london_singapore.map(|rtt| rtt / dist_london_singapore),
+        latency_johannesburg: rtt_london_johannesburg.map(|rtt| rtt / dist_london_johannesburg),
     };
 
     obj.dump()

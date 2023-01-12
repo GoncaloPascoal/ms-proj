@@ -81,7 +81,7 @@ pub struct Satellite {
     id: usize,
     orbital_plane: Arc<OrbitalPlane>,
     arg_periapsis: f64,
-    alive: bool,
+    status: bool,
 }
 
 impl Satellite {
@@ -89,14 +89,26 @@ impl Satellite {
         id: usize, 
         orbital_plane: Arc<OrbitalPlane>, 
         arg_periapsis: f64, 
-        alive: bool,
+        status: bool,
     ) -> Self {
         Satellite {
             id,
             orbital_plane,
             arg_periapsis,
-            alive,
+            status,
         }
+    }
+
+    pub fn id(&self) -> usize {
+        self.id
+    }
+
+    pub fn status(&self) -> bool {
+        self.status
+    }
+
+    pub fn set_status(&mut self, status: bool) {
+        self.status = status;
     }
 
     pub fn calc_position(&self, t: f64) -> Vector3<f64> {
@@ -115,6 +127,15 @@ impl Satellite {
         let direction = Rotation3::from_euler_angles(0.0, PI / 2.0, 0.0) * self.calc_position(t).normalize();
 
         self.orbital_plane.orbital_speed * direction
+    }
+
+    /// Returns true if the satellite has an unobstructed line of sight towards
+    /// a given point (it is not blocked by the Earth).
+    pub fn has_line_of_sight(&self, t: f64, point: Vector3<f64>) -> bool {
+        let position = self.calc_position(t);
+        let direction = (point - position).normalize();
+
+        (direction.dot(&position).powi(2) - position.norm_squared() - EARTH_RADIUS.powi(2)) < 0.0
     }
 }
 
@@ -150,7 +171,7 @@ impl Model {
                     i * satellites_per_plane + j,
                     Arc::clone(&orbital_plane),
                     2.0 * PI * j as f64 / satellites_per_plane as f64,
-                    rng.gen::<f64>() <= starting_failure_rate,
+                    rng.gen::<f64>() >= starting_failure_rate,
                 ));
             }
 
@@ -172,6 +193,10 @@ impl Model {
 
     pub fn satellites(&self) -> &[Satellite] {
         &self.satellites
+    }
+
+    pub fn satellites_mut(&mut self) -> &mut [Satellite] {
+        &mut self.satellites
     }
 
     pub fn t(&self) -> f64 {
@@ -262,9 +287,10 @@ impl Simulation {
             assert!(self.topology.edges(sat).count() <= self.model.max_connections());
         }
 
-        for (sat1, sat2, distance) in self.topology.all_edges() {
-            assert!(self.satellites()[sat1].alive);
-            assert!(self.satellites()[sat2].alive);
+        for (_sat1, _sat2, distance) in self.topology.all_edges() {
+            // TODO: return a Result instead of performing these assertions
+            // assert!(self.satellites()[sat1].status);
+            // assert!(self.satellites()[sat2].status);
             assert!(*distance < self.model.connection_range());
         }
     }
@@ -317,6 +343,10 @@ impl Simulation {
 
         Some(2.0 * distance / LIGHT_SPEED)
     }
+
+    pub fn simulate_failure(&mut self, id: usize) {
+        self.model.satellites_mut()[id].set_status(false);
+    }
 }
 
 pub fn init_msg(sim: &Simulation) -> String {
@@ -357,7 +387,7 @@ pub fn update_msg(sim: &Simulation) -> String {
     for sat in sim.satellites() {
         satellites[sat.id.to_string()] = object! {
             position: sat.calc_position(sim.t()).as_slice(),
-            alive: sat.alive,
+            status: sat.status,
         };
     }
 

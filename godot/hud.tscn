@@ -43,7 +43,7 @@ valign = 1
 [node name="SatelliteInfo" type="Panel" parent="."]
 margin_top = 112.0
 margin_right = 364.0
-margin_bottom = 242.0
+margin_bottom = 308.0
 
 [node name="Title" type="Label" parent="SatelliteInfo"]
 margin_left = 12.0
@@ -82,6 +82,22 @@ custom_fonts/font = ExtResource( 2 )
 text = "Connections:"
 valign = 1
 
+[node name="Status" type="Label" parent="SatelliteInfo"]
+margin_left = 12.0
+margin_top = 124.0
+margin_right = 176.0
+margin_bottom = 143.0
+custom_fonts/font = ExtResource( 2 )
+text = "Status: Alive"
+valign = 1
+
+[node name="SimulateFailure" type="Button" parent="SatelliteInfo"]
+margin_left = 80.0
+margin_top = 156.0
+margin_right = 288.0
+margin_bottom = 180.0
+text = "Simulate Failure"
+
 [node name="MiscInfo" type="Panel" parent="."]
 anchor_left = 1.0
 anchor_right = 1.0
@@ -102,7 +118,7 @@ anchor_left = 1.0
 anchor_right = 1.0
 margin_left = -188.0
 margin_top = 52.0
-margin_bottom = 128.0
+margin_bottom = 156.0
 
 [node name="Title" type="Label" parent="Settings"]
 margin_left = 12.0
@@ -126,4 +142,17 @@ margin_left = 28.0
 margin_right = 153.0
 margin_bottom = 24.0
 text = "Visible connections"
+valign = 1
+
+[node name="CoverageVisibility" type="CheckBox" parent="Settings"]
+margin_left = 12.0
+margin_top = 68.0
+margin_right = 36.0
+margin_bottom = 92.0
+
+[node name="Text" type="Label" parent="Settings/CoverageVisibility"]
+margin_left = 28.0
+margin_right = 153.0
+margin_bottom = 24.0
+text = "Visible coverage"
 valign = 1

@@ -99,6 +99,18 @@ impl Satellite {
         }
     }
 
+    pub fn id(&self) -> usize {
+        self.id
+    }
+
+    pub fn status(&self) -> bool {
+        self.status
+    }
+
+    pub fn set_status(&mut self, status: bool) {
+        self.status = status;
+    }
+
     pub fn calc_position(&self, t: f64) -> Vector3<f64> {
         let r = self.orbital_plane.semimajor_axis;
         let true_anomaly = (t * self.orbital_plane.angular_speed) % (2.0 * PI);
@@ -115,10 +127,6 @@ impl Satellite {
         let direction = Rotation3::from_euler_angles(0.0, PI / 2.0, 0.0) * self.calc_position(t).normalize();
 
         self.orbital_plane.orbital_speed * direction
-    }
-
-    pub fn set_status(&mut self, status: bool) {
-        self.status = status;
     }
 
     /// Returns true if the satellite has an unobstructed line of sight towards

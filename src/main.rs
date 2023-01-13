@@ -1,9 +1,12 @@
 
 use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{Write, self, Read}};
+use connection_strategy::{ConnectionStrategy, GridStrategy};
 use toml::Value;
 
 use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, Model};
 use statistics::statistics_msg;
+
+use crate::connection_strategy::NearestNeighborStrategy;
 
 pub mod model;
 pub mod connection_strategy;
@@ -15,6 +18,7 @@ const STATISTICS_PORT: u16 = 2001;
 fn main() -> thread::Result<()> {
     let args: Vec<String> = env::args().collect();
 
+    // Constellation parameters
     let orbiting_altitude: f64;
     let num_orbital_planes: usize;
     let satellites_per_plane: usize;
@@ -24,6 +28,7 @@ fn main() -> thread::Result<()> {
     let longitude_interval: Option<f64>;
     let phasing: i64;
 
+    // Simulation parameters
     let simulation_speed: f64;
     let update_frequency: f64;
     let update_frequency_server: f64;
@@ -32,6 +37,8 @@ fn main() -> thread::Result<()> {
     let rng_seed: Option<u64>;
     let starting_failure_probability: f64;
     let recurrent_failure_probability: f64;
+
+    let strategy: Box<dyn ConnectionStrategy>;
 
     if args.len() == 1 {
         orbiting_altitude = 0.55e6;
@@ -51,6 +58,8 @@ fn main() -> thread::Result<()> {
         rng_seed = None;
         starting_failure_probability = 0.0;
         recurrent_failure_probability = 0.0;
+
+        strategy = Box::new(GridStrategy::new());
     } else if args.len() == 2 {
         let path = Path::new(&args[1]);
         if !path.exists() {
@@ -88,6 +97,17 @@ fn main() -> thread::Result<()> {
         recurrent_failure_probability = simulation_parameters.get("recurrent_failure_probability").and_then(Value::as_float).unwrap_or(0.0);
         assert!((0.0..=1.0).contains(&recurrent_failure_probability));
         assert!((0.0..=1.0).contains(&starting_failure_probability));
+
+        strategy = match &contents.get("strategy") {
+            Some(Value::Table(params)) => {
+                match params["type"].as_str().unwrap() {
+                    "grid" => Box::new(GridStrategy::new()),
+                    "nearest_neighbor" => Box::new(NearestNeighborStrategy::new()),
+                    _ => panic!("Invalid strategy type."),
+                }
+            }
+            _ => Box::new(GridStrategy::new()),
+        }
     } else {
         panic!("More than one argument!");
     }
@@ -108,6 +128,7 @@ fn main() -> thread::Result<()> {
         rng_seed,
         starting_failure_probability,
         recurrent_failure_probability,
+        strategy,
     )));
 
     let sim_server = Arc::clone(&sim);

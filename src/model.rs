@@ -5,7 +5,7 @@ use nalgebra::{Rotation3, Vector3};
 use petgraph::{algo::astar, graphmap::GraphMap, Undirected, visit::EdgeRef};
 use rand::{Rng, rngs::StdRng, SeedableRng};
 
-use crate::connection_strategy::{ConnectionStrategy, GridStrategy, NearestNeighborStrategy};
+use crate::connection_strategy::ConnectionStrategy;
 
 /// Earth's standard gravitational parameter (gravitational constant times the Earth's mass).
 pub const GM: f64 = 3.986004418e14;
@@ -252,12 +252,12 @@ impl Model {
 pub type ConnectionGraph = GraphMap<usize, f64, Undirected>;
 
 pub struct Simulation {
-    rng: StdRng,
-    recurrent_failure_probability: f64,
     model: Model,
     time_step: f64,
     simulation_speed: f64,
     connection_refresh_interval: f64,
+    rng: StdRng,
+    recurrent_failure_probability: f64,
     last_update_timestamp: f64,
     topology: ConnectionGraph,
     strategy: Box<dyn ConnectionStrategy>,
@@ -272,6 +272,7 @@ impl Simulation {
         rng_seed: Option<u64>,
         starting_failure_probability: f64,
         recurrent_failure_probability: f64,
+        strategy: Box<dyn ConnectionStrategy>,
     ) -> Self {
         let mut rng = match rng_seed {
             Some(s) => StdRng::seed_from_u64(s),
@@ -287,15 +288,15 @@ impl Simulation {
         }
 
         Simulation {
-            rng,
-            recurrent_failure_probability,
             model,
             time_step,
             simulation_speed,
             connection_refresh_interval,
             last_update_timestamp: 0.0,
+            rng,
+            recurrent_failure_probability,
             topology: GraphMap::new(),
-            strategy: Box::new(GridStrategy::new()),
+            strategy,
         }
     }
 

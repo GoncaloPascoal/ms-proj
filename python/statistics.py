@@ -7,8 +7,6 @@ from matplotlib.axes import Axes
 values = {}
 
 class PlotType(Enum):
-    AVERAGE_DISTANCE = auto()
-    DIAMETER = auto()
     DENSITY = auto()
     CONNECTIVITY = auto()
     CONNECTIONS = auto()
@@ -17,14 +15,6 @@ class PlotType(Enum):
     LATENCY_DISTANCE_RATIO = auto()
 
 possible_plots = {
-    PlotType.AVERAGE_DISTANCE: {
-        'title': 'Average Distance between Satellites',
-        'y_values': {'average_distance': 'Average Distance'},
-    },
-    PlotType.DIAMETER: {
-        'title': 'Diameter of the Satellite Graph',
-        'y_values': {'graph_diameter': 'Diameter'},
-    },
     PlotType.DENSITY: {
         'title': 'Density of the Satellite Graph',
         'y_values': {'graph_density': 'Density'},
@@ -56,10 +46,10 @@ def statistics_figure(v: dict) -> None:
     values = v
 
     plot_types = [
-        PlotType.AVERAGE_DISTANCE, PlotType.RTT                   , PlotType.CONNECTIVITY,
-        PlotType.DIAMETER        , PlotType.LATENCY_DISTANCE_RATIO, PlotType.FAILURES    ,
+        PlotType.RTT                   , PlotType.CONNECTIVITY,
+        PlotType.LATENCY_DISTANCE_RATIO, PlotType.FAILURES    ,
     ]
-    rows, columns = 2, 3
+    rows, columns = 2, 2
 
     def update(figure_plots):
         i = 0

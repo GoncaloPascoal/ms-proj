@@ -59,7 +59,7 @@ fn main() -> thread::Result<()> {
         starting_failure_probability = 0.0;
         recurrent_failure_probability = 0.0;
 
-        strategy = Box::new(GridStrategy::new());
+        strategy = Box::new(GridStrategy::new(0));
     } else if args.len() == 2 {
         let path = Path::new(&args[1]);
         if !path.exists() {
@@ -101,12 +101,15 @@ fn main() -> thread::Result<()> {
         strategy = match &contents.get("strategy") {
             Some(Value::Table(params)) => {
                 match params["type"].as_str().unwrap() {
-                    "grid" => Box::new(GridStrategy::new()),
+                    "grid" => {
+                        let offset = params.get("offset").and_then(Value::as_integer).unwrap_or(0) as usize;
+                        Box::new(GridStrategy::new(offset))
+                    },
                     "nearest_neighbor" => Box::new(NearestNeighborStrategy::new()),
                     _ => panic!("Invalid strategy type."),
                 }
             }
-            _ => Box::new(GridStrategy::new()),
+            _ => Box::new(GridStrategy::new(0)),
         }
     } else {
         panic!("More than one argument!");

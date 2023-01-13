@@ -32,11 +32,15 @@ pub trait ConnectionStrategy: Send {
     fn run(&mut self, model: &Model) -> ConnectionGraph;
 }
 
-pub struct GridStrategy;
+pub struct GridStrategy {
+    offset: usize,
+}
 
 impl GridStrategy {
-    pub fn new() -> Self {
-        GridStrategy
+    pub fn new(offset: usize) -> Self {
+        GridStrategy {
+            offset,
+        }
     }
 }
 
@@ -47,23 +51,31 @@ impl ConnectionStrategy for GridStrategy {
             topology.add_node(s.id());
         });
 
-        let sats = model.satellites().len();
-        let planes = model.orbital_planes().len();
-        let sats_per_plane = sats / planes;
+        let num_sats = model.satellites().len();
+        let num_planes = model.orbital_planes().len();
+        let sats_per_plane = num_sats / num_planes;
 
-        for plane in 0..planes {
+        for plane in 0..num_planes {
             let start = plane * sats_per_plane;
-            for sat in 0..(sats_per_plane - 1) {
-                add_edge(&mut topology, model, start + sat, start + sat + 1);
+            for sat in 0..sats_per_plane {
+                add_edge(
+                    &mut topology,
+                    model,
+                    start + sat,
+                    start + (sat + 1) % sats_per_plane
+                );
             }
-            add_edge(&mut topology, model, start, start + sats_per_plane - 1);
         }
 
         for sat in 0..sats_per_plane {
-            for plane in 0..(planes - 1) {
-                add_edge(&mut topology, model, plane * sats_per_plane + sat, (plane + 1) * sats_per_plane + sat);
+            for plane in 0..num_planes {
+                add_edge(
+                    &mut topology,
+                    model,
+                    plane * sats_per_plane + sat,
+                    ((plane + 1) % num_planes) * sats_per_plane + (sat + self.offset) % sats_per_plane
+                );
             }
-            add_edge(&mut topology, model, sat, (planes - 1) * sats_per_plane + sat);
         }
 
         topology

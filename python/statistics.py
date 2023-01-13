@@ -19,39 +19,39 @@ class PlotType(Enum):
 possible_plots = {
     PlotType.AVERAGE_DISTANCE: {
         'title': 'Average Distance between Satellites',
-        'y_values': ['average_distance'],
+        'y_values': {'average_distance': 'Average Distance'},
     },
     PlotType.DIAMETER: {
         'title': 'Diameter of the Satellite Graph',
-        'y_values': ['graph_diameter'],
+        'y_values': {'graph_diameter': 'Diameter'},
     },
     PlotType.DENSITY: {
         'title': 'Density of the Satellite Graph',
-        'y_values': ['graph_density'],
+        'y_values': {'graph_density': 'Density'},
     },
     PlotType.CONNECTIVITY: {
         'title': 'Graph Connectivity',
-        'y_values': ['connected_components', 'articulation_points'],
+        'y_values': {'connected_components': 'Connected Components', 'articulation_points': 'Articulation Points'},
     },
     PlotType.CONNECTIONS: {
         'title': 'Active Connections between Satellites',
-        'y_values': ['active_connections'],
+        'y_values': {'active_connections': 'Active Connections'},
     },
     PlotType.FAILURES: {
         'title': 'Evolution of Satellite Failures',
-        'y_values': ['active_satellites', 'failed_satellites'],
+        'y_values': {'active_satellites': 'Active Satellites', 'failed_satellites': 'Satellite Failures'},
     },
     PlotType.RTT: {
         'title': 'Round Trip Time (from London to Other Cities)',
-        'y_values': ['rtt_nyc', 'rtt_singapore', 'rtt_johannesburg'],
+        'y_values': {'rtt_nyc': 'New York', 'rtt_singapore' : 'Singapore', 'rtt_johannesburg': 'Johannesburg'},
     },
     PlotType.LATENCY_DISTANCE_RATIO: {
         'title': 'Latency to Distance Ratio (from London to Other Cities)',
-        'y_values': ['latency_nyc', 'latency_singapore', 'latency_johannesburg'],
+        'y_values': {'latency_nyc': 'New York', 'latency_singapore': 'Singapore', 'latency_johannesburg': 'Johannesburg'},
     },
 }
 
-def statistics_figure(v: dict):
+def statistics_figure(v: dict) -> None:
     global values
     values = v
 
@@ -73,16 +73,16 @@ def statistics_figure(v: dict):
     _ = animation.FuncAnimation(fig, lambda _ : update(plots), interval=1000)
     plt.show()
 
-def plot_line(ax: Axes, x: str, y: str):
-    ax.plot(values.get(x, []), values.get(y, []), marker='.', label=y)
+def plot_line(ax: Axes, x: str, y: str, ylabel: str) -> None:
+    ax.plot(values.get(x, []), values.get(y, []), marker='.', label=ylabel)
 
-def plot(ax: Axes, p: PlotType):
+def plot(ax: Axes, p: PlotType) -> None:
     y_values = possible_plots[p]['y_values']
     title = possible_plots[p]['title']
     ax.clear()
     ax.set_title(title)
-    for y in y_values:
-        plot_line(ax, 't', y)
+    for y, ylabel in y_values.items():
+        plot_line(ax, 't', y, ylabel)
     ax.legend()
 
 if __name__ == '__main__':

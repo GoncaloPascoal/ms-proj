@@ -3,7 +3,7 @@ use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4A
 use connection_strategy::{ConnectionStrategy, GridStrategy};
 use toml::Value;
 
-use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, Model};
+use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, Model, ConstellationType};
 use statistics::statistics_msg;
 
 use crate::connection_strategy::NearestNeighborStrategy;
@@ -25,7 +25,7 @@ fn main() -> thread::Result<()> {
     let inclination: f64;
     let max_connections: usize;
 
-    let longitude_interval: Option<f64>;
+    let constellation_type: ConstellationType;
     let phasing: i64;
 
     // Simulation parameters
@@ -47,7 +47,7 @@ fn main() -> thread::Result<()> {
         inclination = 60.0;
         max_connections = 4;
 
-        longitude_interval = None;
+        constellation_type = ConstellationType::Delta;
         phasing = 0;
 
         simulation_speed = 10.0;
@@ -83,8 +83,10 @@ fn main() -> thread::Result<()> {
         inclination          = constellation_parameters["inclination"]         .as_float()  .unwrap();
         max_connections      = constellation_parameters["max_connections"]     .as_integer().unwrap() as usize;
 
-        longitude_interval   = constellation_parameters.get("longitude").and_then(Value::as_float);
-        phasing              = constellation_parameters.get("phasing")  .and_then(Value::as_integer).unwrap_or(0); 
+        constellation_type   = constellation_parameters.get("type")   .and_then(Value::as_str)
+            .and_then(|v| ConstellationType::try_from(v).ok())
+            .unwrap_or(ConstellationType::Delta);
+        phasing              = constellation_parameters.get("phasing").and_then(Value::as_integer).unwrap_or(0); 
         assert!((0..num_orbital_planes as i64).contains(&phasing));
 
         simulation_speed            = simulation_parameters.get("simulation_speed")           .and_then(Value::as_float).unwrap_or(1.0);
@@ -120,7 +122,7 @@ fn main() -> thread::Result<()> {
             num_orbital_planes,
             satellites_per_plane,
             inclination.to_radians(),
-            longitude_interval.map(f64::to_radians),
+            constellation_type,
             phasing as usize,
             EARTH_RADIUS + orbiting_altitude,
             max_connections,

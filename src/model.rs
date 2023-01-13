@@ -144,6 +144,32 @@ impl Satellite {
     }
 }
 
+pub enum ConstellationType {
+    Delta,
+    Star
+}
+
+impl ConstellationType {
+    pub fn angle(&self) -> f64 {
+        match self {
+            Self::Delta => 2.0 * PI,
+            Self::Star => PI,
+        }
+    }
+}
+
+impl TryFrom<&str> for ConstellationType {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "delta" => Ok(Self::Delta),
+            "star" => Ok(Self::Star),
+            _ => Err(()),
+        }
+    }
+}
+
 pub struct Model {
     orbital_planes: Vec<Arc<OrbitalPlane>>,
     satellites: Vec<Satellite>,
@@ -156,7 +182,7 @@ impl Model {
         num_orbital_planes: usize,
         satellites_per_plane: usize,
         inclination: f64,
-        longitude_interval: Option<f64>,
+        constellation_type: ConstellationType,
         phasing: usize,
         semimajor_axis: f64,
         max_connections: usize,
@@ -168,10 +194,7 @@ impl Model {
         let phase_offset = phasing as f64 * PI / num_satellites as f64;
 
         for i in 0..num_orbital_planes {
-            let longitude = match longitude_interval {
-                Some(interval) => i as f64 * interval,
-                None => 2.0 * PI * i as f64 / num_orbital_planes as f64,
-            };
+            let longitude = constellation_type.angle() * i as f64 / num_orbital_planes as f64;
 
             let orbital_plane = Arc::new(OrbitalPlane::new(
                 i, semimajor_axis, inclination, longitude,

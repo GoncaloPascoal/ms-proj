@@ -3,7 +3,7 @@ use std::{f64::consts::PI, sync::Arc};
 use json::{object, JsonValue};
 use nalgebra::{Rotation3, Vector3};
 use petgraph::{algo::astar, graphmap::GraphMap, Undirected, visit::EdgeRef};
-use rand::{thread_rng, Rng};
+use rand::{Rng, rngs::StdRng, SeedableRng};
 
 use crate::connection_strategy::{ConnectionStrategy, GridStrategy, NearestNeighborStrategy};
 
@@ -160,11 +160,9 @@ impl Model {
         phasing: usize,
         semimajor_axis: f64,
         max_connections: usize,
-        starting_failure_rate: f64,
     ) -> Self {
         let num_satellites = num_orbital_planes * satellites_per_plane;
 
-        let mut rng = thread_rng();
         let mut orbital_planes = Vec::with_capacity(num_orbital_planes);
         let mut satellites = Vec::with_capacity(num_satellites);
         let phase_offset = phasing as f64 * PI / num_satellites as f64;
@@ -184,7 +182,7 @@ impl Model {
                     i * satellites_per_plane + j,
                     Arc::clone(&orbital_plane),
                     (phase_offset * i as f64 + 2.0 * PI * j as f64 / satellites_per_plane as f64) % 360.0,
-                    rng.gen::<f64>() >= starting_failure_rate,
+                    true,
                 ));
             }
 
@@ -254,6 +252,8 @@ impl Model {
 pub type ConnectionGraph = GraphMap<usize, f64, Undirected>;
 
 pub struct Simulation {
+    rng: StdRng,
+    recurrent_failure_probability: f64,
     model: Model,
     time_step: f64,
     simulation_speed: f64,
@@ -265,23 +265,36 @@ pub struct Simulation {
 
 impl Simulation {
     pub fn new(
-        model: Model,
+        mut model: Model,
         time_step: f64,
         simulation_speed: f64,
         connection_refresh_interval: f64,
+        rng_seed: Option<u64>,
+        starting_failure_probability: f64,
+        recurrent_failure_probability: f64,
     ) -> Self {
-        let mut topology = GraphMap::new();
-        for sat in 0..model.satellites().len() {
-            topology.add_node(sat);
+        let mut rng = match rng_seed {
+            Some(s) => StdRng::seed_from_u64(s),
+            None => StdRng::from_entropy(),
+        };
+
+        if starting_failure_probability > 0.0 {
+            for sat in model.satellites_mut() {
+                if rng.gen::<f64>() < starting_failure_probability {
+                    sat.set_status(false);
+                }
+            }
         }
 
         Simulation {
+            rng,
+            recurrent_failure_probability,
             model,
             time_step,
             simulation_speed,
             connection_refresh_interval,
             last_update_timestamp: 0.0,
-            topology,
+            topology: GraphMap::new(),
             strategy: Box::new(GridStrategy::new()),
         }
     }
@@ -289,8 +302,17 @@ impl Simulation {
     pub fn step(&mut self) {
         self.model.increment_t(self.time_step);
         if self.t() >= self.last_update_timestamp + self.connection_refresh_interval {
+            // Simulate potential satellite failures
+            if self.recurrent_failure_probability > 0.0 {
+                for sat in self.model.satellites_mut() {
+                    if sat.status() && self.rng.gen::<f64>() < self.recurrent_failure_probability {
+                        sat.set_status(false);
+                    }
+                }
+            }
+
             self.last_update_timestamp = self.t();
-            self.update_connections()
+            self.update_connections();
         }
     }
 

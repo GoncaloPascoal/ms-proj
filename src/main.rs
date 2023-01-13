@@ -27,8 +27,11 @@ fn main() -> thread::Result<()> {
     let simulation_speed: f64;
     let update_frequency: f64;
     let update_frequency_server: f64;
-    let starting_failure_rate: f64;
     let connection_refresh_interval: f64;
+
+    let rng_seed: Option<u64>;
+    let starting_failure_probability: f64;
+    let recurrent_failure_probability: f64;
 
     if args.len() == 1 {
         orbiting_altitude = 0.55e6;
@@ -43,8 +46,11 @@ fn main() -> thread::Result<()> {
         simulation_speed = 10.0;
         update_frequency = 10.0;
         update_frequency_server = update_frequency;
-        starting_failure_rate = 0.0;
         connection_refresh_interval = 10.0;
+
+        rng_seed = None;
+        starting_failure_probability = 0.0;
+        recurrent_failure_probability = 0.0;
     } else if args.len() == 2 {
         let path = Path::new(&args[1]);
         if !path.exists() {
@@ -76,8 +82,12 @@ fn main() -> thread::Result<()> {
         update_frequency            = simulation_parameters.get("update_frequency")           .and_then(Value::as_float).unwrap_or(10.0);
         update_frequency_server     = simulation_parameters.get("update_frequency_server")    .and_then(Value::as_float).unwrap_or(update_frequency);
         connection_refresh_interval = simulation_parameters.get("connection_refresh_interval").and_then(Value::as_float).unwrap_or(10.0);
-        starting_failure_rate       = simulation_parameters.get("starting_failure_rate")      .and_then(Value::as_float).unwrap_or(0.0);
-        assert!((0.0..=1.0).contains(&starting_failure_rate));
+
+        rng_seed                      = simulation_parameters.get("rng_seed")                     .and_then(Value::as_integer).map(|v| v as u64);
+        starting_failure_probability  = simulation_parameters.get("starting_failure_probability") .and_then(Value::as_float).unwrap_or(0.0);
+        recurrent_failure_probability = simulation_parameters.get("recurrent_failure_probability").and_then(Value::as_float).unwrap_or(0.0);
+        assert!((0.0..=1.0).contains(&recurrent_failure_probability));
+        assert!((0.0..=1.0).contains(&starting_failure_probability));
     } else {
         panic!("More than one argument!");
     }
@@ -91,11 +101,13 @@ fn main() -> thread::Result<()> {
             phasing as usize,
             EARTH_RADIUS + orbiting_altitude,
             max_connections,
-            starting_failure_rate,
         ),
         simulation_speed / update_frequency,
         simulation_speed,
         connection_refresh_interval,
+        rng_seed,
+        starting_failure_probability,
+        recurrent_failure_probability,
     )));
 
     let sim_server = Arc::clone(&sim);

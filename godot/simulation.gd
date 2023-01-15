@@ -36,7 +36,7 @@ func _ready():
 	
 	if _tcp.connect_to_host("127.0.0.1", PORT) != OK:
 		print("Unable to connect to host.")
-		set_physics_process(false)
+		set_process(false)
 	else:
 		print("Connected to host!")
 
@@ -122,7 +122,7 @@ func _update_connections(connections: Array):
 		var node: ImmediateGeometry = connections_root.get_child(i)
 		node.valid = false
 
-func _physics_process(_delta: float):
+func _process(_delta: float):
 	if _tcp.get_status() == StreamPeerTCP.STATUS_CONNECTED:
 		var bytes = _tcp.get_available_bytes()
 		if bytes > 0:
@@ -161,7 +161,6 @@ func _select_satellite(satellite: KinematicBody):
 		var longitude: float = _selected_satellite.orbital_plane["longitude"]
 		orbital_plane.rotation.y = longitude
 		orbital_plane.visible = true
-		orbital_plane.reset_physics_interpolation()
 	else:
 		orbital_plane.visible = false
 	

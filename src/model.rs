@@ -86,6 +86,8 @@ pub struct Satellite {
 }
 
 impl Satellite {
+    const VIEW_CONE_RATIO: f64 = 0.75;
+
     fn new(
         id: usize, 
         orbital_plane: Arc<OrbitalPlane>, 
@@ -138,9 +140,36 @@ impl Satellite {
     /// Returns true if the satellite has an unobstructed line of sight towards
     /// a given point (it is not blocked by the Earth).
     pub fn has_line_of_sight(&self, point: &Vector3<f64>) -> bool {
+        let distance_to_point = self.position.metric_distance(&point);
+        let segment_range = 0.0..distance_to_point;
         let direction = (point - self.position).normalize();
 
-        (direction.dot(&self.position).powi(2) - self.position.norm_squared() - EARTH_RADIUS.powi(2)) < 0.0
+        let d = -direction.dot(&self.position);
+        let nabla = direction.dot(&self.position).powi(2) - self.position.norm_squared() + EARTH_RADIUS.powi(2);
+
+        if nabla < 0.0 {
+            true
+        }
+        else if nabla == 0.0 {
+            !segment_range.contains(&d)
+        }
+        else {
+            let nabla = nabla.sqrt();
+            !(segment_range.contains(&(d - nabla)) || segment_range.contains(&(d + nabla)))
+        }
+    }
+
+    pub fn is_in_view_cone(&self, point: &Vector3<f64>) -> bool {
+        let view_angle = Self::VIEW_CONE_RATIO * (EARTH_RADIUS / self.orbital_plane.semimajor_axis).asin();
+        let max_distance = self.orbital_plane.semimajor_axis * view_angle.cos();
+
+        let cone_axis = -self.position.normalize();
+        let to_point = point - self.position;
+
+        let distance = to_point.norm();
+        let point_angle = to_point.normalize().dot(&cone_axis).acos();
+
+        point_angle <= view_angle && distance <= max_distance
     }
 }
 
@@ -263,7 +292,7 @@ impl Model {
         Rotation3::from_euler_angles(0.0, angle_y, angle_z) * v
     }
 
-    fn closest_satellite(&self, point: &Vector3<f64>) -> &Satellite {
+    pub fn closest_satellite(&self, point: &Vector3<f64>) -> &Satellite {
         self.satellites.iter().min_by(|s1, s2| {
             let dist1 = point.metric_distance(s1.position());
             let dist2 = point.metric_distance(s2.position());
@@ -365,32 +394,49 @@ impl Simulation {
     }
 
     /// Calculates round trip time (RTT) in seconds between two locations
-    /// specified using geographical coordinates.
+    /// specified using geographical coordinates. Expensive calculation since it
+    /// requires pathfinding algorithms and cloning the topology.
     pub fn calc_rtt(&self, c1: &GeoCoordinates, c2: &GeoCoordinates) -> Option<f64> {
-        let mut distance = 0.0;
+        let mut topology = self.topology.clone();
+        let satellites = self.satellites();
+
+        // Update edge weights (distances between satellites) according to most recent timestamp
+        for edge in topology.all_edges_mut() {
+            let pos1 = satellites[edge.0].position();
+            let pos2 = satellites[edge.1].position();
+            *edge.2 = pos1.metric_distance(pos2);
+        }
+
+        let nodes: Vec<usize> = topology.nodes().collect();
 
         let p1 = self.model.surface_point(c1);
         let p2 = self.model.surface_point(c2);
 
-        let sat1 = self.model.closest_satellite(&p1);
-        let sat2 = self.model.closest_satellite(&p2);
+        let id1 = satellites.len();
+        let id2 = id1 + 1;
 
-        distance += (sat1.position() - p1).norm();
-        if let Some((cost, _)) = astar(
-            &self.topology,
-            sat1.id,
-            |n| n == sat2.id,
+        // Add links between surface points and satellites when there is visibility between them
+        for sat in nodes.iter().map(|id| &satellites[*id]) {
+            if sat.is_in_view_cone(&p1) {
+                topology.add_edge(id1, sat.id(), p1.metric_distance(sat.position()));
+            }
+
+            if sat.is_in_view_cone(&p2) {
+                topology.add_edge(sat.id(), id2, sat.position().metric_distance(&p2));
+            }
+        }
+
+        astar(
+            &topology,
+            id1,
+            |n| n == id2,
             |e| *e.weight(),
-            |n| (sat2.position() - self.satellites()[n].position()).norm()
-        ) {
-            distance += cost;
-        }
-        else {
-            return None;
-        }
-        distance += (sat2.position() - p2).norm();
-
-        Some(2.0 * distance / LIGHT_SPEED)
+            |n| match n {
+                _ if n == id1 => p1.metric_distance(&p2),
+                _ if n == id2 => 0.0,
+                _ => satellites[n].position().metric_distance(&p2)
+            }
+        ).map(|(cost, _)| 2.0 * cost / LIGHT_SPEED)
     }
 
     pub fn simulate_failure(&mut self, id: usize) {

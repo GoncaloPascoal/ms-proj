@@ -1,5 +1,7 @@
 extends KinematicBody
 
+const VIEW_CONE_RATIO := 0.75
+
 onready var light: OmniLight = $Light
 onready var fire: Particles = $Fire
 onready var view_cone: MeshInstance = $ViewConeAnchor/ViewCone
@@ -17,7 +19,7 @@ func _ready():
 	
 	# Initialize view cone
 	view_cone.mesh.height = altitude
-	view_cone.mesh.top_radius = altitude * tan(view_angle)
+	view_cone.mesh.top_radius = altitude * tan(VIEW_CONE_RATIO * view_angle)
 	view_cone.translation = (0.05 + 0.5 * altitude) * Vector3.UP
 
 func _physics_process(_delta: float):

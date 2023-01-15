@@ -1,15 +1,15 @@
 
-use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{Write, self, Read}};
+use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{self, Write, Read}};
 use connection_strategy::{ConnectionStrategy, GridStrategy};
-use toml::Value;
 
-use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, Model, ConstellationType};
+use connection_strategy::NearestNeighborStrategy;
+use model::{EARTH_RADIUS, Simulation, Model, ConstellationType};
+use server::{init_msg, update_msg};
 use statistics::statistics_msg;
 
-use crate::connection_strategy::NearestNeighborStrategy;
-
-pub mod model;
 pub mod connection_strategy;
+pub mod model;
+pub mod server;
 pub mod statistics;
 
 const SERVER_PORT: u16 = 2000;
@@ -61,11 +61,14 @@ fn main() -> thread::Result<()> {
 
         strategy = Box::new(GridStrategy::new(0));
     } else if args.len() == 2 {
+        use toml::Value;
+
         let path = Path::new(&args[1]);
         if !path.exists() {
-            panic!("Specified path does not exist!")
+            panic!("Specified path does not exist!");
         }
-        let contents = fs::read_to_string(path).unwrap().parse::<Value>().unwrap();
+        let contents = fs::read_to_string(path).expect("Error when reading config file!")
+            .parse::<Value>().expect("Error when parsing config file!");
 
         let constellation_parameters = match &contents["constellation"] {
             Value::Table(t) => t,
@@ -165,17 +168,25 @@ fn simulation_thread(sim: Arc<Mutex<Simulation>>, simulation_steps: usize, delay
     }
 }
 
-fn write(stream: &mut TcpStream, msg: String) {
+fn write(stream: &mut TcpStream, msg: String) -> io::Result<()> {
     let bytes = msg.as_bytes();
-    stream.write_all(&(bytes.len() as u32).to_ne_bytes()).unwrap();
-    stream.write_all(bytes).unwrap();
+
+    stream.write_all(&(bytes.len() as u32).to_ne_bytes())?;
+    stream.write_all(bytes)?;
+
+    Ok(())
 }
 
 fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay: Duration) -> io::Result<()> {
     let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, SERVER_PORT);
     let listener = TcpListener::bind(addr).unwrap();
+
     let mut msg;
     let mut size_buf = [0; 4];
+
+    let mut t: f64;
+    let mut last_connection_msg = 0.0;
+    let mut include_connections: bool;
 
     for stream in listener.incoming() {
         let mut stream = stream?;
@@ -184,16 +195,25 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
             let lock = sim.lock().unwrap();
             msg = init_msg(&lock);
         }
-        write(&mut stream, msg);
+        if write(&mut stream, msg).is_err() {
+            continue;
+        }
 
         stream.set_nonblocking(true)?;
         for _ in 0..communication_steps {
             thread::sleep(delay);
             {
                 let lock = sim.lock().unwrap();
-                msg = update_msg(&lock);
+                t = lock.t();
+                include_connections = t - last_connection_msg >= lock.connection_refresh_interval();
+                msg = update_msg(&lock, include_connections);
             }
-            write(&mut stream, msg);
+            if include_connections {
+                last_connection_msg = t;
+            }
+            if write(&mut stream, msg).is_err() {
+                break;
+            }
 
             if let Ok(4) = stream.read(&mut size_buf) {
                 let msg_size = u32::from_le_bytes(size_buf) as usize;
@@ -232,7 +252,9 @@ fn statistics_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, de
                 let lock = sim.lock().unwrap();
                 msg = statistics_msg(&lock);
             }
-            write(&mut stream, msg);
+            if write(&mut stream, msg).is_err() {
+                break;
+            }
         }
     }
 

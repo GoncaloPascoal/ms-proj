@@ -94,6 +94,12 @@ impl NearestNeighborStrategy {
     }
 }
 
+impl Default for NearestNeighborStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConnectionStrategy for NearestNeighborStrategy {
     fn run(&mut self, model: &Model) -> ConnectionGraph {
         let mut topology: ConnectionGraph = GraphMap::new();

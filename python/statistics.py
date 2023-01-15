@@ -67,8 +67,10 @@ def plot_line(ax: Axes, x: str, y: str, ylabel: str) -> None:
     ax.plot(values.get(x, []), values.get(y, []), marker='.', label=ylabel)
 
 def plot(ax: Axes, p: PlotType) -> None:
-    y_values = possible_plots[p]['y_values']
-    title = possible_plots[p]['title']
+    plot = possible_plots[p]
+    y_values = plot['y_values']
+    title = plot['title']
+
     ax.clear()
     ax.set_title(title)
     for y, ylabel in y_values.items():

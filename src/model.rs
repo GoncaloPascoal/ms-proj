@@ -1,6 +1,5 @@
 use std::{f64::consts::PI, sync::Arc};
 
-use json::{object, JsonValue};
 use nalgebra::{Rotation3, Vector3};
 use petgraph::{algo::astar, graphmap::GraphMap, Undirected, visit::EdgeRef};
 use rand::{Rng, rngs::StdRng, SeedableRng};
@@ -75,6 +74,22 @@ impl OrbitalPlane {
             angular_speed: orbital_speed / semimajor_axis,
         }
     }
+
+    pub fn id(&self) -> usize {
+        self.id
+    }
+
+    pub fn semimajor_axis(&self) -> f64 {
+        self.semimajor_axis
+    }
+
+    pub fn inclination(&self) -> f64 {
+        self.inclination
+    }
+
+    pub fn longitude(&self) -> f64 {
+        self.longitude
+    }
 }
 
 pub struct Satellite {
@@ -105,6 +120,14 @@ impl Satellite {
 
     pub fn id(&self) -> usize {
         self.id
+    }
+
+    pub fn orbital_plane(&self) -> &OrbitalPlane {
+        &self.orbital_plane
+    }
+
+    pub fn arg_periapsis(&self) -> f64 {
+        self.arg_periapsis
     }
 
     pub fn position(&self) -> &Vector3<f64> {
@@ -140,7 +163,7 @@ impl Satellite {
     /// Returns true if the satellite has an unobstructed line of sight towards
     /// a given point (it is not blocked by the Earth).
     pub fn has_line_of_sight(&self, point: &Vector3<f64>) -> bool {
-        let distance_to_point = self.position.metric_distance(&point);
+        let distance_to_point = self.position.metric_distance(point);
         let segment_range = 0.0..distance_to_point;
         let direction = (point - self.position).normalize();
 
@@ -352,6 +375,30 @@ impl Simulation {
         }
     }
 
+    pub fn simulation_speed(&self) -> f64 {
+        self.simulation_speed
+    }
+
+    pub fn connection_refresh_interval(&self) -> f64 {
+        self.connection_refresh_interval
+    }
+
+    pub fn satellites(&self) -> &[Satellite] {
+        self.model.satellites()
+    }
+
+    pub fn t(&self) -> f64 {
+        self.model.t()
+    }
+
+    pub fn topology(&self) -> &ConnectionGraph {
+        &self.topology
+    }
+
+    pub fn orbital_planes(&self) -> &[Arc<OrbitalPlane>] {
+        self.model.orbital_planes()
+    }
+
     pub fn step(&mut self) {
         self.model.increment_t(self.time_step);
         if self.t() >= self.last_update_timestamp + self.connection_refresh_interval {
@@ -371,26 +418,6 @@ impl Simulation {
 
     pub fn update_connections(&mut self) {
         self.topology = self.strategy.run(&self.model);
-    }
-
-    pub fn simulation_speed(&self) -> f64 {
-        self.simulation_speed
-    }
-
-    pub fn satellites(&self) -> &[Satellite] {
-        self.model.satellites()
-    }
-
-    pub fn t(&self) -> f64 {
-        self.model.t()
-    }
-
-    pub fn topology(&self) -> &ConnectionGraph {
-        &self.topology
-    }
-
-    pub fn orbital_planes(&self) -> &[Arc<OrbitalPlane>] {
-        self.model.orbital_planes()
     }
 
     /// Calculates round trip time (RTT) in seconds between two locations
@@ -443,60 +470,4 @@ impl Simulation {
         self.model.satellites_mut()[id].set_status(false);
         self.topology.remove_node(id);
     }
-}
-
-pub fn init_msg(sim: &Simulation) -> String {
-    let first_plane = sim.orbital_planes().get(0);
-
-    let semimajor_axis = first_plane.map(|p| p.semimajor_axis).unwrap_or(0.0);
-    let inclination = first_plane.map(|p| p.inclination).unwrap_or(0.0);
-
-    let mut orbital_planes = JsonValue::new_object();
-    for plane in sim.orbital_planes() {
-        orbital_planes[plane.id.to_string()] = object! {
-            longitude: plane.longitude,
-        }
-    }
-
-    let mut satellites = JsonValue::new_object();
-    for sat in sim.satellites() {
-        satellites[sat.id.to_string()] = object! {
-            orbital_plane: sat.orbital_plane.id.to_string(),
-            arg_periapsis: sat.arg_periapsis,
-        }
-    }
-
-    let obj = object! {
-        msg_type: "init",
-        semimajor_axis: semimajor_axis,
-        inclination: inclination,
-        simulation_speed: sim.simulation_speed(),
-        orbital_planes: orbital_planes,
-        satellites: satellites,
-    };
-    
-    obj.dump()
-}
-
-pub fn update_msg(sim: &Simulation) -> String {
-    let mut satellites = JsonValue::new_object();
-    for sat in sim.satellites() {
-        satellites[sat.id.to_string()] = object! {
-            position: sat.position().as_slice(),
-            status: sat.status,
-        };
-    }
-
-    let mut obj = object! {
-        msg_type: "update",
-        t: sim.t(),
-        satellites: satellites,
-    };
-
-    if sim.last_update_timestamp == sim.t() {
-        let connections: Vec<_> = sim.topology().all_edges().map(|(a, b, _)| vec![a, b]).collect();
-        let _ = obj.insert("connections", connections);
-    }
-
-    obj.dump()
 }

@@ -1,5 +1,5 @@
 
-use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{self, Write, Read}};
+use std::{fs::{self, File}, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{self, Write, Read}};
 use connection_strategy::{ConnectionStrategy, GridStrategy};
 
 use connection_strategy::NearestNeighborStrategy;
@@ -60,7 +60,7 @@ fn main() -> thread::Result<()> {
         recurrent_failure_probability = 0.0;
 
         strategy = Box::new(GridStrategy::new(0));
-    } else if args.len() == 2 {
+    } else if args.len() == 2 || args.len() == 3 {
         use toml::Value;
 
         let path = Path::new(&args[1]);
@@ -117,7 +117,7 @@ fn main() -> thread::Result<()> {
             _ => Box::new(GridStrategy::new(0)),
         }
     } else {
-        panic!("More than one argument!");
+        panic!("More than two arguments!");
     }
 
     let sim = Arc::new(Mutex::new(Simulation::new(
@@ -141,20 +141,32 @@ fn main() -> thread::Result<()> {
 
     let sim_server = Arc::clone(&sim);
     let sim_statistics = Arc::clone(&sim);
+    let sim2 = Arc::clone(&sim);
+    let sim_file = Arc::clone(&sim);
 
-    let steps = 10000;
+    let steps = 10000; // TODO: magic number
     let delay = Duration::from_secs_f64(1.0 / update_frequency);
     let delay_server = Duration::from_secs_f64(1.0 / update_frequency_server);
     let server_steps = (steps as f64 * update_frequency_server / update_frequency) as usize;
 
-    let simulation_handle = thread::spawn(move || { simulation_thread(sim, steps, delay) });
-    let server_handle = thread::spawn(move || { server_thread(sim_server, server_steps, delay_server) });
-    let statistics_handle = thread::spawn(move || { statistics_thread(sim_statistics, server_steps, delay_server) });
-
-    simulation_handle.join().expect("Couldn't join simulation thread.");
-    let _ = server_handle.join().expect("Couldn't join visualization server thread.");
-    let _ = statistics_handle.join().expect("Couldn't join statistics server thread.");
-
+    if args.len() == 2 {
+        let simulation_handle = thread::spawn(move || { simulation_thread(sim, steps, delay) });
+        let server_handle = thread::spawn(move || { server_thread(sim_server, server_steps, delay_server) });
+        let statistics_handle = thread::spawn(move || { statistics_thread(sim_statistics, server_steps, delay_server) });
+        
+        simulation_handle.join().expect("Couldn't join simulation thread.");
+        let _ = server_handle.join().expect("Couldn't join visualization server thread.");
+        let _ = statistics_handle.join().expect("Couldn't join statistics server thread.");
+    }
+    else if args.len() == 3 {
+        if let Ok(mut file) = File::create(&args[2]) {
+            let simulation_handle = thread::spawn(move || { simulation_thread(sim2, steps, delay) });
+            let file_writer_handle = thread::spawn(move || { file_thread(sim_file, &mut file, server_steps, delay_server) });
+            
+            simulation_handle.join().expect("Couldn't join simulation thread.");
+            let _ = file_writer_handle.join().expect("Couldn't join file writer server thread.");
+        }
+    }
     Ok(())
 }
 
@@ -258,5 +270,20 @@ fn statistics_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, de
         }
     }
 
+    Ok(())
+}
+
+fn file_thread(sim: Arc<Mutex<Simulation>>, file: &mut File, communication_steps: usize, delay: Duration) -> io::Result<()> {
+    let mut msg;
+    for _ in 0..communication_steps {
+        thread::sleep(delay);
+        {
+            let lock = sim.lock().unwrap();
+            msg = statistics_msg(&lock) + "\n";
+        }
+        if file.write_all(msg.as_bytes()).is_err() {
+            break;
+        }
+    }
     Ok(())
 }

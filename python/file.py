@@ -17,11 +17,8 @@ def main():
 
     values = {}
     with open(file) as f:
-        while True:
-            raw_msg = f.readline()
-            if not raw_msg:
-                break
-
+        raw_msgs = f.readlines()
+        for raw_msg in raw_msgs:
             msg = json.loads(raw_msg)
             for k, v in msg.items():
                 values.setdefault(k, []).append(v)

@@ -1,9 +1,12 @@
 
 use std::{fs, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{Write, self, Read}};
+use connection_strategy::{ConnectionStrategy, GridStrategy};
 use toml::Value;
 
-use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, Model};
+use model::{EARTH_RADIUS, Simulation, init_msg, update_msg, Model, ConstellationType};
 use statistics::statistics_msg;
+
+use crate::connection_strategy::NearestNeighborStrategy;
 
 pub mod model;
 pub mod connection_strategy;
@@ -15,34 +18,48 @@ const STATISTICS_PORT: u16 = 2001;
 fn main() -> thread::Result<()> {
     let args: Vec<String> = env::args().collect();
 
+    // Constellation parameters
     let orbiting_altitude: f64;
     let num_orbital_planes: usize;
     let satellites_per_plane: usize;
     let inclination: f64;
-    let longitude_interval: Option<f64>;
     let max_connections: usize;
-    let connection_range: f64;
 
+    let constellation_type: ConstellationType;
+    let phasing: i64;
+
+    // Simulation parameters
     let simulation_speed: f64;
     let update_frequency: f64;
     let update_frequency_server: f64;
-    let starting_failure_rate: f64;
     let connection_refresh_interval: f64;
+
+    let rng_seed: Option<u64>;
+    let starting_failure_probability: f64;
+    let recurrent_failure_probability: f64;
+
+    let strategy: Box<dyn ConnectionStrategy>;
 
     if args.len() == 1 {
         orbiting_altitude = 0.55e6;
         num_orbital_planes = 10;
         satellites_per_plane = 20;
         inclination = 60.0;
-        longitude_interval = None;
         max_connections = 4;
-        connection_range = 1e10;
+
+        constellation_type = ConstellationType::Delta;
+        phasing = 0;
 
         simulation_speed = 10.0;
         update_frequency = 10.0;
         update_frequency_server = update_frequency;
-        starting_failure_rate = 0.0;
         connection_refresh_interval = 10.0;
+
+        rng_seed = None;
+        starting_failure_probability = 0.0;
+        recurrent_failure_probability = 0.0;
+
+        strategy = Box::new(GridStrategy::new(0));
     } else if args.len() == 2 {
         let path = Path::new(&args[1]);
         if !path.exists() {
@@ -64,16 +81,38 @@ fn main() -> thread::Result<()> {
         num_orbital_planes   = constellation_parameters["num_orbital_planes"]  .as_integer().unwrap() as usize;
         satellites_per_plane = constellation_parameters["satellites_per_plane"].as_integer().unwrap() as usize;
         inclination          = constellation_parameters["inclination"]         .as_float()  .unwrap();
-        longitude_interval   = constellation_parameters.get("longitude").map(Value::as_float).flatten();
         max_connections      = constellation_parameters["max_connections"]     .as_integer().unwrap() as usize;
-        connection_range     = constellation_parameters["connection_range"]    .as_float()  .unwrap();
 
-        simulation_speed            = simulation_parameters.get("simulation_speed")           .map(Value::as_float).flatten().unwrap_or(1.0);
-        update_frequency            = simulation_parameters.get("update_frequency")           .map(Value::as_float).flatten().unwrap_or(10.0);
-        update_frequency_server     = simulation_parameters.get("update_frequency_server")    .map(Value::as_float).flatten().unwrap_or(update_frequency);
-        connection_refresh_interval = simulation_parameters.get("connection_refresh_interval").map(Value::as_float).flatten().unwrap_or(10.0);
-        starting_failure_rate       = simulation_parameters.get("starting_failure_rate")      .map(Value::as_float).flatten().unwrap_or(0.0);
-        assert!((0.0..=1.0).contains(&starting_failure_rate));
+        constellation_type   = constellation_parameters.get("type")   .and_then(Value::as_str)
+            .and_then(|v| ConstellationType::try_from(v).ok())
+            .unwrap_or(ConstellationType::Delta);
+        phasing              = constellation_parameters.get("phasing").and_then(Value::as_integer).unwrap_or(0); 
+        assert!((0..num_orbital_planes as i64).contains(&phasing));
+
+        simulation_speed            = simulation_parameters.get("simulation_speed")           .and_then(Value::as_float).unwrap_or(1.0);
+        update_frequency            = simulation_parameters.get("update_frequency")           .and_then(Value::as_float).unwrap_or(10.0);
+        update_frequency_server     = simulation_parameters.get("update_frequency_server")    .and_then(Value::as_float).unwrap_or(update_frequency);
+        connection_refresh_interval = simulation_parameters.get("connection_refresh_interval").and_then(Value::as_float).unwrap_or(10.0);
+
+        rng_seed                      = simulation_parameters.get("rng_seed")                     .and_then(Value::as_integer).map(|v| v as u64);
+        starting_failure_probability  = simulation_parameters.get("starting_failure_probability") .and_then(Value::as_float).unwrap_or(0.0);
+        recurrent_failure_probability = simulation_parameters.get("recurrent_failure_probability").and_then(Value::as_float).unwrap_or(0.0);
+        assert!((0.0..=1.0).contains(&recurrent_failure_probability));
+        assert!((0.0..=1.0).contains(&starting_failure_probability));
+
+        strategy = match &contents.get("strategy") {
+            Some(Value::Table(params)) => {
+                match params["type"].as_str().unwrap() {
+                    "grid" => {
+                        let offset = params.get("offset").and_then(Value::as_integer).unwrap_or(0) as usize;
+                        Box::new(GridStrategy::new(offset))
+                    },
+                    "nearest_neighbor" => Box::new(NearestNeighborStrategy::new()),
+                    _ => panic!("Invalid strategy type."),
+                }
+            }
+            _ => Box::new(GridStrategy::new(0)),
+        }
     } else {
         panic!("More than one argument!");
     }
@@ -83,15 +122,18 @@ fn main() -> thread::Result<()> {
             num_orbital_planes,
             satellites_per_plane,
             inclination.to_radians(),
-            longitude_interval.map(f64::to_radians),
+            constellation_type,
+            phasing as usize,
             EARTH_RADIUS + orbiting_altitude,
             max_connections,
-            connection_range,
-            starting_failure_rate,
         ),
         simulation_speed / update_frequency,
         simulation_speed,
         connection_refresh_interval,
+        rng_seed,
+        starting_failure_probability,
+        recurrent_failure_probability,
+        strategy,
     )));
 
     let sim_server = Arc::clone(&sim);

@@ -9,7 +9,7 @@ pub fn statistics_msg(sim: &Simulation) -> String {
 
     let edge_count = sim.topology().edge_count() as f64;
     let node_count = sim.topology().node_count() as f64;
-    let failures = 0 as f64; // TODO
+    let failures = sim.satellites().iter().filter(|s| !s.status()).count();
 
     let london       = GeoCoordinates::new( 51.507222,  -0.1275);
     let nyc          = GeoCoordinates::new( 40.712778, -74.006111);
@@ -26,15 +26,14 @@ pub fn statistics_msg(sim: &Simulation) -> String {
     let obj = object! {
         t: sim.t(),
         connected_components: connected_components(sim.topology()),
-        articulation_points: count_articulation_points(sim.topology()),
+        articulation_points: count_articulation_points(sim.satellites().len(), sim.topology()),
         graph_density: 2.0 * edge_count / (node_count * (node_count - 1.0)),
         graph_diameter: diameter_and_average.0,
         average_distance: diameter_and_average.1,
         active_connections: edge_count,
-        active_satellites: node_count - failures,
         failed_satellites: failures,
-        rtt_nyc         : rtt_london_nyc         ,
-        rtt_singapore   : rtt_london_singapore   ,
+        rtt_nyc         : rtt_london_nyc,
+        rtt_singapore   : rtt_london_singapore,
         rtt_johannesburg: rtt_london_johannesburg,
         latency_nyc         : rtt_london_nyc.map(|rtt| rtt / dist_london_nyc),
         latency_singapore   : rtt_london_singapore.map(|rtt| rtt / dist_london_singapore),
@@ -62,11 +61,11 @@ impl TarjanInformation {
     }
 }
 
-fn count_articulation_points(g: &ConnectionGraph) -> usize {
+fn count_articulation_points(num_satellites: usize, g: &ConnectionGraph) -> usize {
     let mut articulation_points = 0;
 
     if let Some(root) = g.nodes().next() {
-        let mut info = TarjanInformation::new(g.node_count());
+        let mut info = TarjanInformation::new(num_satellites);
 
         fn dfs(g: &ConnectionGraph, info: &mut TarjanInformation,
                 articulation_points: &mut usize, idx: usize, d: u32) {

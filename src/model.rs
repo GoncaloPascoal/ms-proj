@@ -3,9 +3,9 @@ use std::{f64::consts::PI, sync::Arc};
 use json::{object, JsonValue};
 use nalgebra::{Rotation3, Vector3};
 use petgraph::{algo::astar, graphmap::GraphMap, Undirected, visit::EdgeRef};
-use rand::{thread_rng, Rng};
+use rand::{Rng, rngs::StdRng, SeedableRng};
 
-use crate::connection_strategy::{ConnectionStrategy, GridStrategy};
+use crate::connection_strategy::ConnectionStrategy;
 
 /// Earth's standard gravitational parameter (gravitational constant times the Earth's mass).
 pub const GM: f64 = 3.986004418e14;
@@ -81,26 +81,34 @@ pub struct Satellite {
     id: usize,
     orbital_plane: Arc<OrbitalPlane>,
     arg_periapsis: f64,
+    position: Vector3<f64>,
     status: bool,
 }
 
 impl Satellite {
+    const VIEW_CONE_RATIO: f64 = 0.75;
+
     fn new(
         id: usize, 
         orbital_plane: Arc<OrbitalPlane>, 
-        arg_periapsis: f64, 
+        arg_periapsis: f64,
         status: bool,
     ) -> Self {
         Satellite {
             id,
             orbital_plane,
             arg_periapsis,
+            position: Vector3::zeros(),
             status,
         }
     }
 
     pub fn id(&self) -> usize {
         self.id
+    }
+
+    pub fn position(&self) -> &Vector3<f64> {
+        &self.position
     }
 
     pub fn status(&self) -> bool {
@@ -111,31 +119,83 @@ impl Satellite {
         self.status = status;
     }
 
-    pub fn calc_position(&self, t: f64) -> Vector3<f64> {
+    pub fn recalculate_position(&mut self, t: f64) {
         let r = self.orbital_plane.semimajor_axis;
         let true_anomaly = (t * self.orbital_plane.angular_speed) % (2.0 * PI);
 
-        let position = Vector3::new(r, 0.0, 0.0);
+        let new_position = Vector3::new(r, 0.0, 0.0);
 
-        Rotation3::from_euler_angles(0.0, self.orbital_plane.longitude, 0.0) *
-        Rotation3::from_euler_angles(self.orbital_plane.inclination, 0.0, 0.0) *
-        Rotation3::from_euler_angles(0.0, self.arg_periapsis + true_anomaly, 0.0) *
-        position
+        self.position = Rotation3::from_euler_angles(0.0, self.orbital_plane.longitude, 0.0) *
+            Rotation3::from_euler_angles(self.orbital_plane.inclination, 0.0, 0.0) *
+            Rotation3::from_euler_angles(0.0, self.arg_periapsis + true_anomaly, 0.0) *
+            new_position
     }
 
-    pub fn calc_velocity(&self, t: f64) -> Vector3<f64> {
-        let direction = Rotation3::from_euler_angles(0.0, PI / 2.0, 0.0) * self.calc_position(t).normalize();
+    pub fn velocity(&self) -> Vector3<f64> {
+        let direction = Rotation3::from_euler_angles(0.0, PI / 2.0, 0.0) * self.position.normalize();
 
         self.orbital_plane.orbital_speed * direction
     }
 
     /// Returns true if the satellite has an unobstructed line of sight towards
     /// a given point (it is not blocked by the Earth).
-    pub fn has_line_of_sight(&self, t: f64, point: &Vector3<f64>) -> bool {
-        let position = self.calc_position(t);
-        let direction = (point - position).normalize();
+    pub fn has_line_of_sight(&self, point: &Vector3<f64>) -> bool {
+        let distance_to_point = self.position.metric_distance(&point);
+        let segment_range = 0.0..distance_to_point;
+        let direction = (point - self.position).normalize();
 
-        (direction.dot(&position).powi(2) - position.norm_squared() - EARTH_RADIUS.powi(2)) < 0.0
+        let d = -direction.dot(&self.position);
+        let nabla = direction.dot(&self.position).powi(2) - self.position.norm_squared() + EARTH_RADIUS.powi(2);
+
+        if nabla < 0.0 {
+            true
+        }
+        else if nabla == 0.0 {
+            !segment_range.contains(&d)
+        }
+        else {
+            let nabla = nabla.sqrt();
+            !(segment_range.contains(&(d - nabla)) || segment_range.contains(&(d + nabla)))
+        }
+    }
+
+    pub fn is_in_view_cone(&self, point: &Vector3<f64>) -> bool {
+        let view_angle = Self::VIEW_CONE_RATIO * (EARTH_RADIUS / self.orbital_plane.semimajor_axis).asin();
+        let max_distance = self.orbital_plane.semimajor_axis * view_angle.cos();
+
+        let cone_axis = -self.position.normalize();
+        let to_point = point - self.position;
+
+        let distance = to_point.norm();
+        let point_angle = to_point.normalize().dot(&cone_axis).acos();
+
+        point_angle <= view_angle && distance <= max_distance
+    }
+}
+
+pub enum ConstellationType {
+    Delta,
+    Star
+}
+
+impl ConstellationType {
+    pub fn angle(&self) -> f64 {
+        match self {
+            Self::Delta => 2.0 * PI,
+            Self::Star => PI,
+        }
+    }
+}
+
+impl TryFrom<&str> for ConstellationType {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "delta" => Ok(Self::Delta),
+            "star" => Ok(Self::Star),
+            _ => Err(()),
+        }
     }
 }
 
@@ -144,7 +204,6 @@ pub struct Model {
     satellites: Vec<Satellite>,
     t: f64,
     max_connections: usize,
-    connection_range: f64,
 }
 
 impl Model {
@@ -152,21 +211,19 @@ impl Model {
         num_orbital_planes: usize,
         satellites_per_plane: usize,
         inclination: f64,
-        longitude_interval: Option<f64>,
+        constellation_type: ConstellationType,
+        phasing: usize,
         semimajor_axis: f64,
         max_connections: usize,
-        connection_range: f64,
-        starting_failure_rate: f64,
     ) -> Self {
-        let mut rng = thread_rng();
+        let num_satellites = num_orbital_planes * satellites_per_plane;
+
         let mut orbital_planes = Vec::with_capacity(num_orbital_planes);
-        let mut satellites = Vec::with_capacity(num_orbital_planes * satellites_per_plane);
+        let mut satellites = Vec::with_capacity(num_satellites);
+        let phase_offset = phasing as f64 * PI / num_satellites as f64;
 
         for i in 0..num_orbital_planes {
-            let longitude = match longitude_interval {
-                Some(interval) => i as f64 * interval,
-                None => 2.0 * PI * i as f64 / num_orbital_planes as f64,
-            };
+            let longitude = constellation_type.angle() * i as f64 / num_orbital_planes as f64;
 
             let orbital_plane = Arc::new(OrbitalPlane::new(
                 i, semimajor_axis, inclination, longitude,
@@ -176,8 +233,8 @@ impl Model {
                 satellites.push(Satellite::new(
                     i * satellites_per_plane + j,
                     Arc::clone(&orbital_plane),
-                    2.0 * PI * j as f64 / satellites_per_plane as f64,
-                    rng.gen::<f64>() >= starting_failure_rate,
+                    (phase_offset * i as f64 + 2.0 * PI * j as f64 / satellites_per_plane as f64) % 360.0,
+                    true,
                 ));
             }
 
@@ -189,7 +246,6 @@ impl Model {
             satellites,
             t: 0.0,
             max_connections,
-            connection_range,
         }
     }
 
@@ -211,14 +267,18 @@ impl Model {
 
     pub fn increment_t(&mut self, time_step: f64) {
         self.t += time_step;
+        let t = self.t;
+        for sat in self.satellites_mut() {
+            sat.recalculate_position(t);
+        }
     }
 
     pub fn max_connections(&self) -> usize {
         self.max_connections
     }
 
-    pub fn connection_range(&self) -> f64 {
-        self.connection_range
+    pub fn distance_between_satellites(&self, sat1: &Satellite, sat2: &Satellite) -> f64 {
+        sat1.position().metric_distance(sat2.position())
     }
 
     /// Returns the point on the surface of the Earth with the given
@@ -232,10 +292,10 @@ impl Model {
         Rotation3::from_euler_angles(0.0, angle_y, angle_z) * v
     }
 
-    fn closest_satellite(&self, point: &Vector3<f64>) -> &Satellite {
+    pub fn closest_satellite(&self, point: &Vector3<f64>) -> &Satellite {
         self.satellites.iter().min_by(|s1, s2| {
-            let dist1 = (point - s1.calc_position(self.t)).norm();
-            let dist2 = (point - s2.calc_position(self.t)).norm();
+            let dist1 = point.metric_distance(s1.position());
+            let dist2 = point.metric_distance(s2.position());
             dist1.partial_cmp(&dist2).unwrap()
         }).unwrap()
     }
@@ -248,6 +308,8 @@ pub struct Simulation {
     time_step: f64,
     simulation_speed: f64,
     connection_refresh_interval: f64,
+    rng: StdRng,
+    recurrent_failure_probability: f64,
     last_update_timestamp: f64,
     topology: ConnectionGraph,
     strategy: Box<dyn ConnectionStrategy>,
@@ -255,14 +317,26 @@ pub struct Simulation {
 
 impl Simulation {
     pub fn new(
-        model: Model,
+        mut model: Model,
         time_step: f64,
         simulation_speed: f64,
         connection_refresh_interval: f64,
+        rng_seed: Option<u64>,
+        starting_failure_probability: f64,
+        recurrent_failure_probability: f64,
+        strategy: Box<dyn ConnectionStrategy>,
     ) -> Self {
-        let mut topology = GraphMap::new();
-        for sat in 0..model.satellites().len() {
-            topology.add_node(sat);
+        let mut rng = match rng_seed {
+            Some(s) => StdRng::seed_from_u64(s),
+            None => StdRng::from_entropy(),
+        };
+
+        if starting_failure_probability > 0.0 {
+            for sat in model.satellites_mut() {
+                if rng.gen::<f64>() < starting_failure_probability {
+                    sat.set_status(false);
+                }
+            }
         }
 
         Simulation {
@@ -271,34 +345,32 @@ impl Simulation {
             simulation_speed,
             connection_refresh_interval,
             last_update_timestamp: 0.0,
-            topology,
-            strategy: Box::new(GridStrategy::new()),
+            rng,
+            recurrent_failure_probability,
+            topology: GraphMap::new(),
+            strategy,
         }
     }
 
     pub fn step(&mut self) {
         self.model.increment_t(self.time_step);
         if self.t() >= self.last_update_timestamp + self.connection_refresh_interval {
+            // Simulate potential satellite failures
+            if self.recurrent_failure_probability > 0.0 {
+                for sat in self.model.satellites_mut() {
+                    if sat.status() && self.rng.gen::<f64>() < self.recurrent_failure_probability {
+                        sat.set_status(false);
+                    }
+                }
+            }
+
             self.last_update_timestamp = self.t();
-            self.update_connections()
+            self.update_connections();
         }
     }
 
     pub fn update_connections(&mut self) {
-        // Updating the topology
         self.topology = self.strategy.run(&self.model);
-
-        // Validating the topology
-        for sat in self.topology.nodes() {
-            assert!(self.topology.edges(sat).count() <= self.model.max_connections());
-        }
-
-        for (_sat1, _sat2, distance) in self.topology.all_edges() {
-            // TODO: return a Result instead of performing these assertions
-            // assert!(self.satellites()[sat1].status);
-            // assert!(self.satellites()[sat2].status);
-            assert!(*distance < self.model.connection_range());
-        }
     }
 
     pub fn simulation_speed(&self) -> f64 {
@@ -322,32 +394,49 @@ impl Simulation {
     }
 
     /// Calculates round trip time (RTT) in seconds between two locations
-    /// specified using geographical coordinates.
+    /// specified using geographical coordinates. Expensive calculation since it
+    /// requires pathfinding algorithms and cloning the topology.
     pub fn calc_rtt(&self, c1: &GeoCoordinates, c2: &GeoCoordinates) -> Option<f64> {
-        let mut distance = 0.0;
+        let mut topology = self.topology.clone();
+        let satellites = self.satellites();
+
+        // Update edge weights (distances between satellites) according to most recent timestamp
+        for edge in topology.all_edges_mut() {
+            let pos1 = satellites[edge.0].position();
+            let pos2 = satellites[edge.1].position();
+            *edge.2 = pos1.metric_distance(pos2);
+        }
+
+        let nodes: Vec<usize> = topology.nodes().collect();
 
         let p1 = self.model.surface_point(c1);
         let p2 = self.model.surface_point(c2);
 
-        let sat1 = self.model.closest_satellite(&p1);
-        let sat2 = self.model.closest_satellite(&p2);
+        let id1 = satellites.len();
+        let id2 = id1 + 1;
 
-        distance += (sat1.calc_position(self.t()) - p1).norm();
-        if let Some((cost, _)) = astar(
-            &self.topology,
-            sat1.id,
-            |n| n == sat2.id,
+        // Add links between surface points and satellites when there is visibility between them
+        for sat in nodes.iter().map(|id| &satellites[*id]) {
+            if sat.is_in_view_cone(&p1) {
+                topology.add_edge(id1, sat.id(), p1.metric_distance(sat.position()));
+            }
+
+            if sat.is_in_view_cone(&p2) {
+                topology.add_edge(sat.id(), id2, sat.position().metric_distance(&p2));
+            }
+        }
+
+        astar(
+            &topology,
+            id1,
+            |n| n == id2,
             |e| *e.weight(),
-            |n| (sat2.calc_position(self.t()) - self.satellites()[n].calc_position(self.t())).norm()
-        ) {
-            distance += cost;
-        }
-        else {
-            return None;
-        }
-        distance += (sat2.calc_position(self.t()) - p2).norm();
-
-        Some(2.0 * distance / LIGHT_SPEED)
+            |n| match n {
+                _ if n == id1 => p1.metric_distance(&p2),
+                _ if n == id2 => 0.0,
+                _ => satellites[n].position().metric_distance(&p2)
+            }
+        ).map(|(cost, _)| 2.0 * cost / LIGHT_SPEED)
     }
 
     pub fn simulate_failure(&mut self, id: usize) {
@@ -393,7 +482,7 @@ pub fn update_msg(sim: &Simulation) -> String {
     let mut satellites = JsonValue::new_object();
     for sat in sim.satellites() {
         satellites[sat.id.to_string()] = object! {
-            position: sat.calc_position(sim.t()).as_slice(),
+            position: sat.position().as_slice(),
             status: sat.status,
         };
     }

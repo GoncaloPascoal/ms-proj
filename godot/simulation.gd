@@ -30,14 +30,13 @@ var _selected_satellite: KinematicBody
 func _ready():
 	connect("satellite_selected", hud, "on_satellite_selected")
 	hud.connect("connection_visibility_changed", self, "_on_connection_visibility_changed")
-	hud.connect("coverage_visibility_changed", self, "_on_coverage_visibility_changed")
 	hud.connect("failure_simulation_requested", self, "_on_failure_simulation_requested")
 	
 	$Earth.scale = EARTH_RADIUS * SCALE * Vector3.ONE
 	
 	if _tcp.connect_to_host("127.0.0.1", PORT) != OK:
 		print("Unable to connect to host.")
-		set_physics_process(false)
+		set_process(false)
 	else:
 		print("Connected to host!")
 
@@ -123,7 +122,7 @@ func _update_connections(connections: Array):
 		var node: ImmediateGeometry = connections_root.get_child(i)
 		node.valid = false
 
-func _physics_process(_delta: float):
+func _process(_delta: float):
 	if _tcp.get_status() == StreamPeerTCP.STATUS_CONNECTED:
 		var bytes = _tcp.get_available_bytes()
 		if bytes > 0:
@@ -162,7 +161,6 @@ func _select_satellite(satellite: KinematicBody):
 		var longitude: float = _selected_satellite.orbital_plane["longitude"]
 		orbital_plane.rotation.y = longitude
 		orbital_plane.visible = true
-		orbital_plane.reset_physics_interpolation()
 	else:
 		orbital_plane.visible = false
 	
@@ -173,10 +171,6 @@ func _on_connection_visibility_changed(value: bool):
 	for node in connections_root.get_children():
 		if node.valid:
 			node.set_active(_visible_connections)
-
-func _on_coverage_visibility_changed(value: bool):
-	for sat in satellites_root.get_children():
-		sat.set_coverage_visibility(value)
 
 func _on_failure_simulation_requested(satellite: KinematicBody):
 	if _tcp.get_status() == StreamPeerTCP.STATUS_CONNECTED:

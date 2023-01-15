@@ -1,7 +1,6 @@
 extends Control
 
 signal connection_visibility_changed(value)
-signal coverage_visibility_changed(value)
 signal failure_simulation_requested(satellite)
 
 onready var time_step: Label = $SimulationInfo/TimeStep
@@ -14,7 +13,6 @@ onready var selected_status: Label = $SatelliteInfo/Status
 onready var button_simulate_failure: Button = $SatelliteInfo/SimulateFailure
 
 onready var check_box_connection_visibility: CheckBox = $Settings/ConnectionVisibility
-onready var check_box_coverage_visibility: CheckBox = $Settings/CoverageVisibility
 
 onready var fps: Label = $MiscInfo/FPS
 
@@ -25,7 +23,6 @@ func _ready():
 	satellite_info.visible = false
 	
 	check_box_connection_visibility.connect("toggled", self, "_on_connection_visibility_toggled")
-	check_box_coverage_visibility.connect("toggled", self, "_on_coverage_visibility_toggled")
 	button_simulate_failure.connect("pressed", self, "_on_simulate_failure_pressed")
 
 func init_hud(json: Dictionary):
@@ -60,9 +57,6 @@ func update_hud(json: Dictionary):
 
 func _on_connection_visibility_toggled(value: bool):
 	emit_signal("connection_visibility_changed", value)
-
-func _on_coverage_visibility_toggled(value: bool):
-	emit_signal("coverage_visibility_changed", value)
 
 func _on_simulate_failure_pressed():
 	if _selected_satellite:

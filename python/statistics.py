@@ -29,7 +29,7 @@ possible_plots = {
     },
     PlotType.FAILURES: {
         'title': 'Evolution of Satellite Failures',
-        'y_values': {'active_satellites': 'Active Satellites', 'failed_satellites': 'Satellite Failures'},
+        'y_values': {'failed_satellites': 'Satellite Failures'},
     },
     PlotType.RTT: {
         'title': 'Round Trip Time (from London to Other Cities)',

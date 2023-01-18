@@ -32,7 +32,7 @@ possible_plots = {
     },
     PlotType.FAILURES: {
         'title': 'Evolution of Satellite Failures',
-        'y_values': {'failed_satellites': None},
+        'y_values': {'failure_ratio': None},
         'y_label': 'Satellite Failures (%)',
     },
     PlotType.RTT: {

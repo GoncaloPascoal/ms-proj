@@ -9,12 +9,15 @@ pub fn statistics_msg(sim: &Simulation) -> String {
 
     let edge_count = sim.topology().edge_count() as f64;
     let node_count = sim.topology().node_count() as f64;
-    let failure_ratio = sim.satellites().iter().filter(|s| !s.status()).count() as f64 / node_count * 100.0;
 
-    let london       = GeoCoordinates::new( 51.507222,  -0.1275);
-    let nyc          = GeoCoordinates::new( 40.712778, -74.006111);
-    let johannesburg = GeoCoordinates::new(-26.204444,  28.045556);
-    let singapore    = GeoCoordinates::new(  1.291667, 103.85);
+    let num_satellites = sim.satellites().len();
+    let failed_satellites = sim.satellites().iter().filter(|s| !s.status()).count();
+    let failure_ratio = failed_satellites as f64 / num_satellites as f64 * 100.0;
+
+    let london       = GeoCoordinates::new(51.507222, -0.1275);
+    let nyc          = GeoCoordinates::new(40.712778, -74.006111);
+    let johannesburg = GeoCoordinates::new(-26.204444, 28.045556);
+    let singapore    = GeoCoordinates::new(1.291667, 103.85);
 
     let rtt_london_nyc          = sim.calc_rtt(&london, &nyc         );
     let rtt_london_singapore    = sim.calc_rtt(&london, &singapore   );
@@ -31,7 +34,7 @@ pub fn statistics_msg(sim: &Simulation) -> String {
         graph_diameter: diameter_and_average.0,
         average_distance: diameter_and_average.1,
         active_connections: edge_count,
-        failed_satellites: failure_ratio,
+        failure_ratio: failure_ratio,
         rtt_nyc         : rtt_london_nyc,
         rtt_singapore   : rtt_london_singapore,
         rtt_johannesburg: rtt_london_johannesburg,

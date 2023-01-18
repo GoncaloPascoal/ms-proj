@@ -1,11 +1,10 @@
 
-use std::{fs::{self, File}, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::Mutex, thread, time::Duration, io::{self, Write, Read}};
+use std::{fs::{self, File}, env, path::Path, net::{TcpListener, TcpStream, SocketAddrV4, Ipv4Addr}, sync::Arc, sync::{Mutex, mpsc::{self, Receiver}}, thread, time::Duration, io::{self, Write, Read}};
 use connection_strategy::{ConnectionStrategy, GridStrategy};
 
 use connection_strategy::NearestNeighborStrategy;
 use model::{EARTH_RADIUS, Simulation, Model, ConstellationType};
 use server::{init_msg, update_msg};
-use statistics::statistics_msg;
 
 pub mod connection_strategy;
 pub mod model;
@@ -29,6 +28,9 @@ fn main() -> thread::Result<()> {
     let phasing: i64;
 
     // Simulation parameters
+    let file_path: Option<String>;
+    let steps: Option<usize>;
+
     let simulation_speed: f64;
     let update_frequency: f64;
     let update_frequency_server: f64;
@@ -50,6 +52,9 @@ fn main() -> thread::Result<()> {
         constellation_type = ConstellationType::Delta;
         phasing = 0;
 
+        file_path = None;
+        steps = None;
+
         simulation_speed = 10.0;
         update_frequency = 10.0;
         update_frequency_server = update_frequency;
@@ -60,7 +65,7 @@ fn main() -> thread::Result<()> {
         recurrent_failure_probability = 0.0;
 
         strategy = Box::new(GridStrategy::new(0));
-    } else if args.len() == 2 || args.len() == 3 {
+    } else if args.len() == 2 {
         use toml::Value;
 
         let path = Path::new(&args[1]);
@@ -92,6 +97,13 @@ fn main() -> thread::Result<()> {
         phasing              = constellation_parameters.get("phasing").and_then(Value::as_integer).unwrap_or(0); 
         assert!((0..num_orbital_planes as i64).contains(&phasing));
 
+        file_path = simulation_parameters.get("file_path").and_then(Value::as_str).map(|s| s.to_owned());
+        steps     = simulation_parameters.get("steps")    .and_then(Value::as_integer).map(|v| v as usize);
+
+        if file_path.is_some() {
+            steps.expect("Must specify a finite number of time steps when saving simulation data to a file!");
+        }
+
         simulation_speed            = simulation_parameters.get("simulation_speed")           .and_then(Value::as_float).unwrap_or(1.0);
         update_frequency            = simulation_parameters.get("update_frequency")           .and_then(Value::as_float).unwrap_or(10.0);
         update_frequency_server     = simulation_parameters.get("update_frequency_server")    .and_then(Value::as_float).unwrap_or(update_frequency);
@@ -117,8 +129,10 @@ fn main() -> thread::Result<()> {
             _ => Box::new(GridStrategy::new(0)),
         }
     } else {
-        panic!("More than two arguments!");
+        panic!("More than one argument!");
     }
+
+    let (sender, receiver) = mpsc::channel();
 
     let sim = Arc::new(Mutex::new(Simulation::new(
         Model::new(
@@ -137,41 +151,43 @@ fn main() -> thread::Result<()> {
         starting_failure_probability,
         recurrent_failure_probability,
         strategy,
+        sender,
     )));
 
     let sim_server = Arc::clone(&sim);
-    let sim_statistics = Arc::clone(&sim);
-    let sim2 = Arc::clone(&sim);
-    let sim_file = Arc::clone(&sim);
 
     let steps = 10000; // TODO: magic number
-    let delay = Duration::from_secs_f64(1.0 / update_frequency);
+    let mut delay = Duration::from_secs_f64(1.0 / update_frequency);
     let delay_server = Duration::from_secs_f64(1.0 / update_frequency_server);
     let server_steps = (steps as f64 * update_frequency_server / update_frequency) as usize;
 
-    if args.len() == 2 {
-        let simulation_handle = thread::spawn(move || { simulation_thread(sim, steps, delay) });
-        let server_handle = thread::spawn(move || { server_thread(sim_server, server_steps, delay_server) });
-        let statistics_handle = thread::spawn(move || { statistics_thread(sim_statistics, server_steps, delay_server) });
-        
-        simulation_handle.join().expect("Couldn't join simulation thread.");
-        let _ = server_handle.join().expect("Couldn't join visualization server thread.");
-        let _ = statistics_handle.join().expect("Couldn't join statistics server thread.");
+    let mut server_handle = None;
+    let statistics_handle;
+
+    if let Some(file_path) = file_path {
+        let mut file = File::create(file_path).expect("Couldn't create file!");
+        statistics_handle = thread::spawn(move || { file_thread(receiver, &mut file) });
+        // Run simulation without artificial delays (only collect data)
+        delay = Duration::ZERO;
     }
-    else if args.len() == 3 {
-        if let Ok(mut file) = File::create(&args[2]) {
-            let simulation_handle = thread::spawn(move || { simulation_thread(sim2, steps, delay) });
-            let file_writer_handle = thread::spawn(move || { file_thread(sim_file, &mut file, server_steps, delay_server) });
-            
-            simulation_handle.join().expect("Couldn't join simulation thread.");
-            let _ = file_writer_handle.join().expect("Couldn't join file writer server thread.");
-        }
+    else {
+        server_handle = Some(thread::spawn(move || { server_thread(sim_server, server_steps, delay_server) }));
+        statistics_handle = thread::spawn(move || { statistics_thread(receiver) });
     }
+
+    let simulation_handle = thread::spawn(move || { simulation_thread(sim, steps, delay) });
+    simulation_handle.join().expect("Couldn't join simulation thread.");
+
+    let _ = statistics_handle.join().expect("Couldn't join statistics thread.");
+    if let Some(handle) = server_handle {
+        let _ = handle.join().expect("Couldn't join server thread.");
+    }
+
     Ok(())
 }
 
-fn simulation_thread(sim: Arc<Mutex<Simulation>>, simulation_steps: usize, delay: Duration) {
-    for _ in 0..simulation_steps {
+fn simulation_thread(sim: Arc<Mutex<Simulation>>, steps: usize, delay: Duration) {
+    for _ in 0..steps {
         thread::sleep(delay);
         {
             let mut lock = sim.lock().unwrap();
@@ -189,7 +205,7 @@ fn write(stream: &mut TcpStream, msg: String) -> io::Result<()> {
     Ok(())
 }
 
-fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay: Duration) -> io::Result<()> {
+fn server_thread(sim: Arc<Mutex<Simulation>>, steps: usize, delay: Duration) -> io::Result<()> {
     let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, SERVER_PORT);
     let listener = TcpListener::bind(addr).unwrap();
 
@@ -212,7 +228,7 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
         }
 
         stream.set_nonblocking(true)?;
-        for _ in 0..communication_steps {
+        for _ in 0..steps {
             thread::sleep(delay);
             {
                 let lock = sim.lock().unwrap();
@@ -250,40 +266,25 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay:
     Ok(())
 }
 
-fn statistics_thread(sim: Arc<Mutex<Simulation>>, communication_steps: usize, delay: Duration) -> io::Result<()> {
+fn statistics_thread(channel: Receiver<String>) -> io::Result<()> {
     let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, STATISTICS_PORT);
     let listener = TcpListener::bind(addr).unwrap();
-    let mut msg;
 
     for stream in listener.incoming() {
         let mut stream = stream?;
 
-        for _ in 0..communication_steps {
-            thread::sleep(delay);
-            {
-                let lock = sim.lock().unwrap();
-                msg = statistics_msg(&lock);
-            }
-            if write(&mut stream, msg).is_err() {
-                break;
-            }
+        while let Ok(msg) = channel.recv() {
+            write(&mut stream, msg)?;
         }
     }
 
     Ok(())
 }
 
-fn file_thread(sim: Arc<Mutex<Simulation>>, file: &mut File, communication_steps: usize, delay: Duration) -> io::Result<()> {
-    let mut msg;
-    for _ in 0..communication_steps {
-        thread::sleep(delay);
-        {
-            let lock = sim.lock().unwrap();
-            msg = statistics_msg(&lock) + "\n";
-        }
-        if file.write_all(msg.as_bytes()).is_err() {
-            break;
-        }
+fn file_thread(channel: Receiver<String>, file: &mut File) -> io::Result<()> {
+    while let Ok(msg) = channel.recv() {
+        file.write_all(msg.as_bytes())?;
     }
+
     Ok(())
 }

@@ -1,10 +1,10 @@
-use std::{f64::consts::PI, sync::Arc};
+use std::{f64::consts::PI, sync::{Arc, mpsc::Sender}};
 
 use nalgebra::{Rotation3, Vector3};
 use petgraph::{algo::astar, graphmap::GraphMap, Undirected, visit::EdgeRef};
 use rand::{Rng, rngs::StdRng, SeedableRng};
 
-use crate::connection_strategy::ConnectionStrategy;
+use crate::{connection_strategy::ConnectionStrategy, statistics::statistics_msg};
 
 /// Earth's standard gravitational parameter (gravitational constant times the Earth's mass).
 pub const GM: f64 = 3.986004418e14;
@@ -336,6 +336,7 @@ pub struct Simulation {
     last_update_timestamp: f64,
     topology: ConnectionGraph,
     strategy: Box<dyn ConnectionStrategy>,
+    statistics_channel: Sender<String>,
 }
 
 impl Simulation {
@@ -348,6 +349,7 @@ impl Simulation {
         starting_failure_probability: f64,
         recurrent_failure_probability: f64,
         strategy: Box<dyn ConnectionStrategy>,
+        statistics_channel: Sender<String>,
     ) -> Self {
         let mut rng = match rng_seed {
             Some(s) => StdRng::seed_from_u64(s),
@@ -372,6 +374,7 @@ impl Simulation {
             recurrent_failure_probability,
             topology: GraphMap::new(),
             strategy,
+            statistics_channel,
         }
     }
 
@@ -411,13 +414,16 @@ impl Simulation {
                 }
             }
 
-            self.last_update_timestamp = self.t();
             self.update_connections();
         }
     }
 
     pub fn update_connections(&mut self) {
+        self.last_update_timestamp = self.t();
         self.topology = self.strategy.run(&self.model);
+
+        // Send statistics message
+        self.statistics_channel.send(statistics_msg(self)).unwrap();
     }
 
     /// Calculates round trip time (RTT) in seconds between two locations

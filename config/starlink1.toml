@@ -1,10 +1,10 @@
-name = "OneWeb"
+name = "Starlink 1"
 
 [constellation]
-altitude = 1.2e6
-num_orbital_planes = 12
-satellites_per_plane = 49
-inclination = 86.4
+altitude = 1.15e6
+num_orbital_planes = 32
+satellites_per_plane = 50
+inclination = 53.0
 max_connections = 4
 
 [simulation]

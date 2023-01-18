@@ -1,7 +1,5 @@
 extends ImmediateGeometry
 
-# Adapted from https://github.com/dbp8890/line-renderer
-
 const COLOR_DEFAULT := Color.white
 const COLOR_SELECTED := Color.red
 

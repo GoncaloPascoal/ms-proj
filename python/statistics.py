@@ -67,6 +67,11 @@ def plot(ax: Axes, p: PlotType) -> None:
         if ylabel == None:
             legend = False
 
+    if y.startswith('rtt'):
+        ax.set_ylim(0, min(0.25, max(y_values)))
+    elif y.startswith('latency'):
+        ax.set_ylim(0)
+
     if legend:
         ax.legend()
 
@@ -94,9 +99,9 @@ def statistics_figure(v: dict,
     plt.show()
 
 def main():
-    parser = argparse.ArgumentParser(description="Simulation Statistics")
-    parser.add_argument(dest="f", type=str,
-                        help="Name of the file containing the simulation data")
+    parser = argparse.ArgumentParser(description='Simulation Statistics')
+    parser.add_argument(dest='f', type=str,
+                        help='Name of the file containing the simulation data')
     args = parser.parse_args()
     file = args.f
 

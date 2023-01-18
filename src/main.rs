@@ -156,10 +156,8 @@ fn main() -> thread::Result<()> {
 
     let sim_server = Arc::clone(&sim);
 
-    let steps = 10000; // TODO: magic number
     let mut delay = Duration::from_secs_f64(1.0 / update_frequency);
     let delay_server = Duration::from_secs_f64(1.0 / update_frequency_server);
-    let server_steps = (steps as f64 * update_frequency_server / update_frequency) as usize;
 
     let mut server_handle = None;
     let statistics_handle;
@@ -171,7 +169,7 @@ fn main() -> thread::Result<()> {
         delay = Duration::ZERO;
     }
     else {
-        server_handle = Some(thread::spawn(move || { server_thread(sim_server, server_steps, delay_server) }));
+        server_handle = Some(thread::spawn(move || { server_thread(sim_server, delay_server) }));
         statistics_handle = thread::spawn(move || { statistics_thread(receiver) });
     }
 
@@ -186,12 +184,23 @@ fn main() -> thread::Result<()> {
     Ok(())
 }
 
-fn simulation_thread(sim: Arc<Mutex<Simulation>>, steps: usize, delay: Duration) {
-    for _ in 0..steps {
+fn simulation_thread(sim: Arc<Mutex<Simulation>>, steps: Option<usize>, delay: Duration) {
+    let loop_step = || {
         thread::sleep(delay);
         {
             let mut lock = sim.lock().unwrap();
             lock.step();
+        }
+    };
+
+    if let Some(steps) = steps {
+        for _ in 0..steps {
+            loop_step();
+        }
+    }
+    else {
+        loop {
+            loop_step();
         }
     }
 }
@@ -205,7 +214,7 @@ fn write(stream: &mut TcpStream, msg: String) -> io::Result<()> {
     Ok(())
 }
 
-fn server_thread(sim: Arc<Mutex<Simulation>>, steps: usize, delay: Duration) -> io::Result<()> {
+fn server_thread(sim: Arc<Mutex<Simulation>>, delay: Duration) -> io::Result<()> {
     let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, SERVER_PORT);
     let listener = TcpListener::bind(addr).unwrap();
 
@@ -228,7 +237,7 @@ fn server_thread(sim: Arc<Mutex<Simulation>>, steps: usize, delay: Duration) -> 
         }
 
         stream.set_nonblocking(true)?;
-        for _ in 0..steps {
+        loop {
             thread::sleep(delay);
             {
                 let lock = sim.lock().unwrap();

@@ -1,4 +1,4 @@
-name = "Starlink - Grid with Offset"
+name = "Failure Scenario - Grid Strategy"
 
 [constellation]
 altitude = 0.55e6

@@ -93,13 +93,16 @@ def statistics_figure(v: dict,
                 plot(ax, plot_types[i])
                 i += 1
 
-    fig, plots = plt.subplots(rows, columns)
-    fig.subplots_adjust(hspace=0.5)
     if animated:
+        fig, plots = plt.subplots(rows, columns)
+        fig.subplots_adjust(hspace=0.5)
         _ = animation.FuncAnimation(fig, lambda _: update(plots), interval=1000)
+        plt.show()
     else:
-        update(plots)
-    plt.show()
+        for plot_type in plot_types:
+            _, plots = plt.subplots()
+            plot(plots, plot_type)
+            plt.show()
 
 def main():
     parser = argparse.ArgumentParser(description='Interactive Satellite Megaconstellation Simulation - Statistics Component')
@@ -119,7 +122,12 @@ def main():
             for k, v in msg.items():
                 values.setdefault(k, []).append(v)
 
-    statistics_figure(values, animated=False)
+
+    plot_order = [
+        PlotType.RTT, PlotType.LATENCY_DISTANCE_RATIO,
+        PlotType.CONNECTIVITY, PlotType.FAILURES,
+    ]
+    statistics_figure(values, animated=False, plot_types=plot_order)
 
 if __name__ == '__main__':
     main()

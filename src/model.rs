@@ -315,12 +315,12 @@ impl Model {
         Rotation3::from_euler_angles(0.0, angle_y, angle_z) * v
     }
 
-    pub fn closest_satellite(&self, point: &Vector3<f64>) -> &Satellite {
-        self.satellites.iter().min_by(|s1, s2| {
+    pub fn closest_active_satellite(&self, point: &Vector3<f64>) -> Option<&Satellite> {
+        self.satellites.iter().filter(|s| s.status()).min_by(|s1, s2| {
             let dist1 = point.metric_distance(s1.position());
             let dist2 = point.metric_distance(s2.position());
             dist1.partial_cmp(&dist2).unwrap()
-        }).unwrap()
+        })
     }
 }
 
@@ -364,7 +364,7 @@ impl Simulation {
             }
         }
 
-        Simulation {
+        let mut sim = Simulation {
             model,
             time_step,
             simulation_speed,
@@ -375,7 +375,10 @@ impl Simulation {
             topology: GraphMap::new(),
             strategy,
             statistics_channel,
-        }
+        };
+        sim.update_connections();
+
+        sim
     }
 
     pub fn simulation_speed(&self) -> f64 {

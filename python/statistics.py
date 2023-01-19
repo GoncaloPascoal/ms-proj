@@ -1,8 +1,11 @@
+
 from enum import Enum, auto
 from typing import List
 from matplotlib import animation, pyplot as plt
 from matplotlib.axes import Axes
+
 import argparse, json, os
+import numpy as np
 
 values = {}
 
@@ -47,8 +50,8 @@ possible_plots = {
     },
 }
 
-def plot_line(ax: Axes, x: str, y: str, ylabel: str) -> None:
-    ax.plot(values.get(x, []), values.get(y, []), marker='.', label=ylabel)
+def plot_line(ax: Axes, x: str, y: str, label: str) -> None:
+    ax.plot(values.get(x, []), values.get(y, []), marker='.', label=label)
 
 def plot(ax: Axes, p: PlotType) -> None:
     plot = possible_plots[p]
@@ -62,13 +65,13 @@ def plot(ax: Axes, p: PlotType) -> None:
     ax.set_ylabel(y_label)
 
     legend = True
-    for y, ylabel in y_values.items():
-        plot_line(ax, 't', y, ylabel)
-        if ylabel == None:
+    for y, label in y_values.items():
+        plot_line(ax, 't', y, label)
+        if label == None:
             legend = False
 
     if y.startswith('rtt'):
-        ax.set_ylim(0, min(0.25, max(y_values)))
+        ax.set_ylim(0, 0.3)
     elif y.startswith('latency'):
         ax.set_ylim(0)
 
@@ -99,21 +102,20 @@ def statistics_figure(v: dict,
     plt.show()
 
 def main():
-    parser = argparse.ArgumentParser(description='Simulation Statistics')
-    parser.add_argument(dest='f', type=str,
-                        help='Name of the file containing the simulation data')
+    parser = argparse.ArgumentParser(description='Interactive Satellite Megaconstellation Simulation - Statistics Component')
+    parser.add_argument(dest='path', type=str,
+                        help='Path to the file containing the simulation data')
     args = parser.parse_args()
-    file = args.f
+    path = args.path
 
-    if not os.path.exists(file) or not os.path.isfile(file):
+    if not os.path.exists(path) or not os.path.isfile(path):
         print('File doesn\'t exist')
         return
 
     values = {}
-    with open(file) as f:
-        raw_msgs = f.readlines()
-        for raw_msg in raw_msgs:
-            msg = json.loads(raw_msg)
+    with open(path) as f:
+        msgs = json.loads(f.read())
+        for msg in msgs:
             for k, v in msg.items():
                 values.setdefault(k, []).append(v)
 

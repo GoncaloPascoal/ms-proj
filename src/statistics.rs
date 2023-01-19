@@ -1,12 +1,15 @@
 
 use json::object;
-use petgraph::{algo::{connected_components, dijkstra}, visit::EdgeRef};
+use petgraph::algo::connected_components;
 
 use crate::model::{ConnectionGraph, Simulation, GeoCoordinates};
 
-pub fn statistics_msg(sim: &Simulation) -> String {
-    let diameter_and_average = calculate_diameter_and_average(sim.topology());
+fn round(x: f64, decimal_places: u32) -> f64 {
+    let y = 10f64.powi(decimal_places as i32);
+    (x * y).round() / y
+}
 
+pub fn statistics_msg(sim: &Simulation) -> String {
     let edge_count = sim.topology().edge_count() as f64;
     let node_count = sim.topology().node_count() as f64;
 
@@ -27,12 +30,10 @@ pub fn statistics_msg(sim: &Simulation) -> String {
     let dist_london_johannesburg = GeoCoordinates::haversine_distance(&london, &johannesburg);
 
     let obj = object! {
-        t: sim.t(),
+        t: round(sim.t(), 3),
         connected_components: connected_components(sim.topology()),
         articulation_points: count_articulation_points(sim.satellites().len(), sim.topology()),
         graph_density: 2.0 * edge_count / (node_count * (node_count - 1.0)),
-        graph_diameter: diameter_and_average.0,
-        average_distance: diameter_and_average.1,
         active_connections: edge_count,
         failure_ratio: failure_ratio,
         rtt_nyc         : rtt_london_nyc,
@@ -115,26 +116,4 @@ fn count_articulation_points(num_satellites: usize, g: &ConnectionGraph) -> usiz
     }
 
     articulation_points
-}
-
-fn calculate_diameter_and_average(g: &ConnectionGraph) -> (f64, f64) {
-    let mut diameter = 0.0;
-    let mut average = 0.0;
-
-    for source in g.nodes() { 
-        let distances = dijkstra(
-            &g,
-            source,
-            None,
-            |e| *e.weight(),
-        );
-        for (_, distance) in distances {
-            diameter = f64::max(diameter, distance);
-            average += distance;
-        }
-    }
-    let node_count = g.node_count() as f64;
-    average /= node_count * (node_count - 1.0);
-   
-    (diameter, average)
 }

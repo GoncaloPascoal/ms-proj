@@ -14,7 +14,7 @@ pub mod statistics;
 const SERVER_PORT: u16 = 2000;
 const STATISTICS_PORT: u16 = 2001;
 
-fn main() -> thread::Result<()> {
+fn main() {
     let args: Vec<String> = env::args().collect();
 
     // Constellation parameters
@@ -157,8 +157,6 @@ fn main() -> thread::Result<()> {
         sender,
     )));
 
-    let sim_server = Arc::clone(&sim);
-
     let mut delay = Duration::from_secs_f64(1.0 / update_frequency);
     let delay_server = Duration::from_secs_f64(1.0 / update_frequency_server);
 
@@ -172,6 +170,7 @@ fn main() -> thread::Result<()> {
         delay = Duration::ZERO;
     }
     else {
+        let sim_server = Arc::clone(&sim);
         server_handle = Some(thread::spawn(move || { server_thread(sim_server, delay_server) }));
         statistics_handle = thread::spawn(move || { statistics_thread(receiver) });
     }
@@ -183,8 +182,6 @@ fn main() -> thread::Result<()> {
     if let Some(handle) = server_handle {
         let _ = handle.join().expect("Couldn't join server thread.");
     }
-
-    Ok(())
 }
 
 fn simulation_thread(sim: Arc<Mutex<Simulation>>, steps: Option<usize>, delay: Duration) {
@@ -294,9 +291,19 @@ fn statistics_thread(channel: Receiver<String>) -> io::Result<()> {
 }
 
 fn file_thread(channel: Receiver<String>, file: &mut File) -> io::Result<()> {
+    let mut first_msg = true;
+
+    file.write_all(b"[")?;
     while let Ok(msg) = channel.recv() {
+        if !first_msg {
+            file.write_all(b",")?;
+        }
+        else {
+            first_msg = false;
+        }
         file.write_all(msg.as_bytes())?;
     }
+    file.write_all(b"]")?;
 
     Ok(())
 }

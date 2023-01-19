@@ -9,5 +9,5 @@ max_connections = 4
 phasing = 5
 
 [simulation]
-file_path = "data/s3e2.json"
+file_path = "data/s3e3.json"
 steps = 7200

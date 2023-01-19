@@ -8,7 +8,7 @@ inclination = 53.0
 max_connections = 4
 
 [simulation]
-file_path = "data/s3e1.json"
+file_path = "data/s4e2.json"
 steps = 7200
 rng_seed = 1024
 recurrent_failure_probability = 0.0005

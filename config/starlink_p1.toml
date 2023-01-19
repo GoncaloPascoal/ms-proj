@@ -1,4 +1,4 @@
-name = "Starlink 1"
+name = "Starlink - Proposal 1"
 
 [constellation]
 altitude = 1.15e6
@@ -6,8 +6,3 @@ num_orbital_planes = 32
 satellites_per_plane = 50
 inclination = 53.0
 max_connections = 4
-
-[simulation]
-update_frequency = 10.0
-simulation_speed = 5.0
-connection_refresh_interval = 10.0

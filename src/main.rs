@@ -67,6 +67,9 @@ fn main() -> thread::Result<()> {
         strategy = Box::new(GridStrategy::new(0));
     } else if args.len() == 2 {
         use toml::Value;
+        use toml::map::Map;
+
+        let empty_parameters = Map::new();
 
         let path = Path::new(&args[1]);
         if !path.exists() {
@@ -82,7 +85,7 @@ fn main() -> thread::Result<()> {
 
         let simulation_parameters = match &contents["simulation"] {
             Value::Table(t) => t,
-            _ => panic!(),
+            _ => &empty_parameters,
         };
 
         orbiting_altitude    = constellation_parameters["altitude"]            .as_float()  .unwrap();

@@ -1,0 +1,14 @@
+name = "Iridium"
+
+[constellation]
+altitude = 0.781e6
+num_orbital_planes = 6
+satellites_per_plane = 11
+inclination = 86.4
+type = "star"
+phasing = 2
+max_connections = 4
+
+[simulation]
+file_path = "data/s1e3.json"
+steps = 7200

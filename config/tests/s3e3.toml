@@ -1,0 +1,13 @@
+name = "Starlink - Phasing"
+
+[constellation]
+altitude = 0.55e6
+num_orbital_planes = 24
+satellites_per_plane = 66
+inclination = 53.0
+max_connections = 4
+phasing = 5
+
+[simulation]
+file_path = "data/s3e2.json"
+steps = 7200

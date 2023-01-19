@@ -1,0 +1,12 @@
+name = "OneWeb"
+
+[constellation]
+altitude = 1.2e6
+num_orbital_planes = 12
+satellites_per_plane = 49
+inclination = 86.4
+max_connections = 4
+
+[simulation]
+file_path = "data/s1e2.json"
+steps = 7200

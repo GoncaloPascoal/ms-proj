@@ -1,6 +1,6 @@
 
 from enum import Enum, auto
-from typing import List
+from typing import List, Iterable
 from matplotlib import animation, pyplot as plt
 from matplotlib.axes import Axes
 
@@ -78,6 +78,12 @@ def plot(ax: Axes, p: PlotType) -> None:
     if legend:
         ax.legend()
 
+def filter_average(l: Iterable[float | None]) -> float | None:
+    filtered = list(filter(lambda x: x is not None, l))
+    if filtered:
+        return sum(filtered) / len(filtered)
+    return None
+
 def statistics_figure(v: dict,
                       plot_types: List[PlotType] = [
                           PlotType.RTT                   , PlotType.CONNECTIVITY,
@@ -100,8 +106,9 @@ def statistics_figure(v: dict,
         plt.show()
     else:
         for plot_type in plot_types:
-            _, plots = plt.subplots()
+            _, plots = plt.subplots(figsize=(10, 4))
             plot(plots, plot_type)
+            plt.tight_layout()
             plt.show()
 
 def main():
@@ -122,6 +129,9 @@ def main():
             for k, v in msg.items():
                 values.setdefault(k, []).append(v)
 
+    for k, v in values.items():
+        if k.startswith('rtt') or k.startswith('latency'):
+            print(f'{k} -> {filter_average(v)}')
 
     plot_order = [
         PlotType.RTT, PlotType.LATENCY_DISTANCE_RATIO,

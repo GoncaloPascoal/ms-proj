@@ -10,7 +10,7 @@ config_version=4
 
 [application]
 
-config/name="ISCS"
+config/name="ISMS"
 run/main_scene="res://simulation.tscn"
 config/icon="res://icon.png"
 

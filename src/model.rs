@@ -101,7 +101,7 @@ pub struct Satellite {
 }
 
 impl Satellite {
-    const VIEW_CONE_RATIO: f64 = 0.75;
+    const VIEW_CONE_RATIO: f64 = 0.9;
 
     fn new(
         id: usize, 

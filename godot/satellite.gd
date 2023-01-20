@@ -1,6 +1,6 @@
 extends KinematicBody
 
-const VIEW_CONE_RATIO := 0.75
+const VIEW_CONE_RATIO := 0.9
 
 onready var light: OmniLight = $Light
 onready var fire: Particles = $Fire

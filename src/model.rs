@@ -101,7 +101,7 @@ pub struct Satellite {
 }
 
 impl Satellite {
-    const VIEW_CONE_RATIO: f64 = 0.9;
+    const HALF_ANGLE_DEGREES: f64 = 60.0;
 
     fn new(
         id: usize, 
@@ -183,8 +183,8 @@ impl Satellite {
     }
 
     pub fn is_in_view_cone(&self, point: &Vector3<f64>) -> bool {
-        let view_angle = Self::VIEW_CONE_RATIO * (EARTH_RADIUS / self.orbital_plane.semimajor_axis).asin();
-        let max_distance = self.orbital_plane.semimajor_axis * view_angle.cos();
+        let half_angle = Self::HALF_ANGLE_DEGREES.to_radians();
+        let max_distance = self.orbital_plane.semimajor_axis * half_angle.cos();
 
         let cone_axis = -self.position.normalize();
         let to_point = point - self.position;
@@ -192,7 +192,7 @@ impl Satellite {
         let distance = to_point.norm();
         let point_angle = to_point.normalize().dot(&cone_axis).acos();
 
-        point_angle <= view_angle && distance <= max_distance
+        point_angle <= half_angle && distance <= max_distance
     }
 }
 

@@ -1,6 +1,6 @@
 extends KinematicBody
 
-const VIEW_CONE_RATIO := 0.9
+const HALF_ANGLE_DEGREES := 60.0
 
 onready var light: OmniLight = $Light
 onready var fire: Particles = $Fire
@@ -12,14 +12,13 @@ var status := true setget _set_status
 
 # Note: altitude value is scaled and should not be displayed to user
 var altitude: float
-var view_angle: float
 
 func _ready():
 	set_coverage_visibility(false)
 	
 	# Initialize view cone
 	view_cone.mesh.height = altitude
-	view_cone.mesh.top_radius = altitude * tan(VIEW_CONE_RATIO * view_angle)
+	view_cone.mesh.top_radius = altitude * tan(deg2rad(HALF_ANGLE_DEGREES))
 	view_cone.translation = (0.05 + 0.5 * altitude) * Vector3.UP
 
 func _physics_process(_delta: float):

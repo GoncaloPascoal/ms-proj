@@ -41,7 +41,7 @@ possible_plots = {
     PlotType.RTT: {
         'title': 'Round Trip Time (from London to Other Cities)',
         'y_values': {'rtt_nyc': 'New York', 'rtt_singapore': 'Singapore', 'rtt_johannesburg': 'Johannesburg'},
-        'y_label': 'Round Trip Time (s)',
+        'y_label': 'Round Trip Time (ms)',
     },
     PlotType.LATENCY_DISTANCE_RATIO: {
         'title': 'Latency to Distance Ratio (from London to Other Cities)',
@@ -71,7 +71,7 @@ def plot(ax: Axes, p: PlotType) -> None:
             legend = False
 
     if y.startswith('rtt'):
-        ax.set_ylim(0, 0.3)
+        ax.set_ylim(0, 200)
     elif y.startswith('latency'):
         ax.set_ylim(0)
 

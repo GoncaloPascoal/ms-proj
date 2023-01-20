@@ -49,7 +49,6 @@ func _init_simulation(json: Dictionary):
 	var satellites: Array = json["satellites"]
 	var semimajor_axis: float = json["semimajor_axis"]
 	var altitude := semimajor_axis - EARTH_RADIUS
-	var view_angle := asin(EARTH_RADIUS / semimajor_axis)
 	
 	_orbital_planes = json["orbital_planes"]
 	_inclination = json["inclination"]
@@ -66,7 +65,6 @@ func _init_simulation(json: Dictionary):
 		instance.id = id
 		instance.orbital_plane = _orbital_planes[data["orbital_plane"]]
 		instance.altitude = 1.1 * altitude * SCALE
-		instance.view_angle = view_angle
 		
 		satellites_root.add_child(instance)
 	

@@ -1,7 +1,7 @@
 
 <div align="center">
     <h1>Interactive Satellite Megaconstellation Simulation</h1>
-    Project for the Modelling and Simulation (MS) curricular unit.
+    <h3>Project for the Modelling and Simulation (MS) curricular unit.</h3>
 </div>
 
 ## Setup
@@ -17,5 +17,9 @@ cargo run --release path/to/config.toml
 ```
 - Run the visualization script, which will automatically connect to the simulation through a TCP socket.
 ```
-python3 python/websocket.py
+python3 python/socket.py
+```
+- Optionally, you can also view statistics from simulation data which has been saved to a file:
+```
+python3 python/statistics.py path/to/simulation_data.json
 ```

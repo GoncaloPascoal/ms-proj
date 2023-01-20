@@ -44,8 +44,8 @@ fn main() {
 
     if args.len() == 1 {
         orbiting_altitude = 0.55e6;
-        num_orbital_planes = 10;
-        satellites_per_plane = 20;
+        num_orbital_planes = 12;
+        satellites_per_plane = 30;
         inclination = 60.0;
         max_connections = 4;
 
@@ -55,7 +55,7 @@ fn main() {
         file_path = None;
         steps = None;
 
-        simulation_speed = 10.0;
+        simulation_speed = 1.0;
         update_frequency = 10.0;
         update_frequency_server = update_frequency;
         connection_refresh_interval = 10.0;

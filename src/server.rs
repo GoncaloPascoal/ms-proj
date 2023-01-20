@@ -19,7 +19,7 @@ pub fn init_msg(sim: &Simulation) -> String {
     let mut satellites = JsonValue::new_array();
     for sat in sim.satellites() {
         let _ = satellites.push(object! {
-            orbital_plane: sat.orbital_plane().id().to_string(),
+            orbital_plane: sat.orbital_plane().id(),
             arg_periapsis: sat.arg_periapsis(),
         });
     }

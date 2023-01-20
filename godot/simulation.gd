@@ -18,7 +18,7 @@ onready var satellites_root: Spatial = $SatellitesRoot
 onready var connections_root: Spatial = $ConnectionsRoot
 onready var orbital_plane: MeshInstance = $OrbitalPlane
 
-var _orbital_planes: Dictionary
+var _orbital_planes: Array
 var _connections := []
 var _inclination: float
 
@@ -46,7 +46,7 @@ func array_to_vector3(arr: Array) -> Vector3:
 func _init_simulation(json: Dictionary):
 	earth.simulation_speed = json["simulation_speed"]
 	
-	var satellites: Dictionary = json["satellites"]
+	var satellites: Array = json["satellites"]
 	var semimajor_axis: float = json["semimajor_axis"]
 	var altitude := semimajor_axis - EARTH_RADIUS
 	var view_angle := asin(EARTH_RADIUS / semimajor_axis)
@@ -60,10 +60,10 @@ func _init_simulation(json: Dictionary):
 	orbital_plane.mesh.height = r * 0.003
 	orbital_plane.rotation.x = _inclination
 	
-	for id in satellites:
+	for id in len(satellites):
 		var data = satellites[id]
 		var instance = satellite_scene.instance()
-		instance.id = int(id)
+		instance.id = id
 		instance.orbital_plane = _orbital_planes[data["orbital_plane"]]
 		instance.altitude = 1.1 * altitude * SCALE
 		instance.view_angle = view_angle
@@ -73,11 +73,11 @@ func _init_simulation(json: Dictionary):
 	hud.init_hud(json)
 
 func _update_simulation(json: Dictionary):
-	var satellites: Dictionary = json["satellites"]
+	var satellites: Array = json["satellites"]
 	
-	for id in satellites:
+	for id in len(satellites):
 		var data = satellites[id]
-		var satellite = satellites_root.get_child(int(id))
+		var satellite = satellites_root.get_child(id)
 		
 		var position = array_to_vector3(data["position"]) * SCALE
 		satellite.global_translation = position

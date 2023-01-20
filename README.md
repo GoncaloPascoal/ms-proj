@@ -17,7 +17,7 @@ cargo run --release path/to/config.toml
 ```
 - Run the visualization script, which will automatically connect to the simulation through a TCP socket.
 ```
-python3 python/socket.py
+python3 python/tcp_socket.py
 ```
 - Optionally, you can also view statistics from simulation data which has been saved to a file:
 ```

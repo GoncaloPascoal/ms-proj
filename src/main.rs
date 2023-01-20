@@ -83,8 +83,8 @@ fn main() {
             _ => panic!(),
         };
 
-        let simulation_parameters = match &contents["simulation"] {
-            Value::Table(t) => t,
+        let simulation_parameters = match &contents.get("simulation") {
+            Some(Value::Table(t)) => t,
             _ => &empty_parameters,
         };
 

@@ -28,7 +28,7 @@ python3 python/statistics.py path/to/simulation_data.json
 
 This section explains the parameters that can be used in TOML configuration files for the simulator.
 
-- name (optional): name of the scenario
+- `name` (optional): name of the scenario
 
 ### Constellation Table (required)
 - `altitude`: orbiting altitude of the satellites

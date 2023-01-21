@@ -264,12 +264,16 @@ impl Model {
             orbital_planes.push(orbital_plane);
         }
 
-        Model {
+        let mut model = Model {
             orbital_planes,
             satellites,
             t: 0.0,
             max_connections,
-        }
+        };
+
+        model.recalculate_satellite_positions();
+
+        model
     }
 
     pub fn orbital_planes(&self) -> &[Arc<OrbitalPlane>] {
@@ -290,6 +294,10 @@ impl Model {
 
     pub fn increment_t(&mut self, time_step: f64) {
         self.t += time_step;
+        self.recalculate_satellite_positions();
+    }
+
+    fn recalculate_satellite_positions(&mut self) {
         let t = self.t;
         for sat in self.satellites_mut() {
             sat.recalculate_position(t);

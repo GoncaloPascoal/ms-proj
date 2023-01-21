@@ -1,6 +1,7 @@
 
 import json
 import socket
+import sys
 from threading import Thread
 
 from statistics import statistics_figure
@@ -12,20 +13,28 @@ values = {}
 
 def receive_message(sock: socket.socket) -> str:
     data = []
-    while True:
-        try:
-            chunk = sock.recv(DATA_BLOCK)
-        except BlockingIOError:
-            continue
-        if not chunk or chunk.find(b'\x00\x00') != -1:
-            break
+
+    length_raw = sock.recv(4)
+    if len(length_raw) != 4:
+        exit(0)
+
+    length = int.from_bytes(length_raw, sys.byteorder)
+    received = 0
+
+    while received < length:
+        chunk = sock.recv(length - received)
+
+        if not chunk:
+            exit(0)
+
         data.append(chunk)
+        received += len(chunk)
+
     return b''.join(data)
 
 def client():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(('localhost', PORT))
-    sock.setblocking(False)
 
     try:
         while True:

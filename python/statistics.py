@@ -106,7 +106,7 @@ def statistics_figure(v: dict,
         plt.show()
     else:
         for plot_type in plot_types:
-            _, plots = plt.subplots(figsize=(10, 4))
+            _, plots = plt.subplots(figsize=(12, 4))
             plot(plots, plot_type)
             plt.tight_layout()
             plt.show()

@@ -10,6 +10,7 @@ max_connections = 4
 [simulation]
 file_path = "data/s2e1.json"
 steps = 7200
+update_frequency = 1.0
 
 [strategy]
 type = "grid"

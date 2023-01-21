@@ -10,8 +10,9 @@ max_connections = 4
 [simulation]
 file_path = "data/s4e1.json"
 steps = 7200
+update_frequency = 1.0
 rng_seed = 1024
-recurrent_failure_probability = 0.0032
+recurrent_failure_probability = 0.0003
 
 [strategy]
 type = "grid"

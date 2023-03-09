@@ -1,7 +1,9 @@
 
 <div align="center">
-    <h1>Interactive Satellite Megaconstellation Simulation</h1>
-    <h3>Project for the Modelling and Simulation (MS) curricular unit.</h3>
+  <h1>Interactive Satellite Megaconstellation Simulation</h1>
+  <h3>Project for the Modelling and Simulation (MS) curricular unit.</h3>
+
+  ![Visualization Tool](docs/img/visualization.png)
 </div>
 
 ## Setup
